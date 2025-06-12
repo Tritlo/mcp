@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "haskell-mcp-development": {
+      "command": "cabal",
+      "args": ["run", "mcp"],
+      "cwd": "/absolute/path/to/mcp-haskell",
+      "env": {
+        "GHC_ENVIRONMENT": "-"
+      }
+    },
+    "haskell-mcp-production": {
+      "command": "/usr/local/bin/mcp-haskell",
+      "args": [],
+      "cwd": "/opt/mcp-servers",
+      "env": {}
+    },
+    "haskell-mcp-stack": {
+      "command": "stack",
+      "args": ["exec", "mcp"],
+      "cwd": "/path/to/mcp-haskell",
+      "env": {}
+    }
+  }
+}

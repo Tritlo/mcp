@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "haskell-mcp-example": {
+      "command": "cabal",
+      "args": ["run", "mcp"],
+      "cwd": "/path/to/mcp-haskell",
+      "env": {
+        "GHC_ENVIRONMENT": "-"
+      }
+    }
+  }
+}

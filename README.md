@@ -154,19 +154,26 @@ To test with Claude Desktop or other MCP clients:
 
 ### Example MCP Client Configuration
 
-For Claude Desktop, add to your config:
+For Claude Desktop, add to your config file (location varies by OS):
 
 ```json
 {
-  "servers": {
+  "mcpServers": {
     "haskell-mcp": {
-      "command": ["cabal", "run", "mcp"],
-      "args": [],
-      "cwd": "/path/to/mcp-haskell"
+      "command": "cabal",
+      "args": ["run", "mcp"],
+      "cwd": "/absolute/path/to/mcp-haskell"
     }
   }
 }
 ```
+
+**Configuration file locations:**
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json` 
+- **Linux**: `~/.config/claude/claude_desktop_config.json`
+
+See the [`examples/`](examples/) directory for more detailed configuration examples and setup instructions.
 
 ## Implementation Notes
 

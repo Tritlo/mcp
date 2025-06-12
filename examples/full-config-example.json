@@ -1,0 +1,34 @@
+{
+  "$schema": "https://schemas.claudeai.com/claude_desktop_config.json",
+  "mcpServers": {
+    "haskell-mcp-example": {
+      "command": "cabal",
+      "args": ["run", "mcp"],
+      "cwd": "/Users/username/projects/mcp-haskell",
+      "env": {
+        "GHC_ENVIRONMENT": "-",
+        "CABAL_CONFIG": ""
+      }
+    },
+    "haskell-mcp-with-logging": {
+      "command": "cabal", 
+      "args": ["run", "mcp", "--", "--verbose"],
+      "cwd": "/Users/username/projects/mcp-haskell",
+      "env": {
+        "MCP_LOG_LEVEL": "debug"
+      }
+    },
+    "haskell-mcp-custom-tools": {
+      "command": "/usr/local/bin/mcp-haskell-tools",
+      "args": ["--config", "/etc/mcp/tools.conf"],
+      "cwd": "/var/lib/mcp",
+      "env": {
+        "MCP_TOOLS_PATH": "/usr/local/share/mcp-tools",
+        "MCP_RESOURCES_PATH": "/var/lib/mcp/resources"
+      }
+    }
+  },
+  "globalShortcuts": {
+    "mcp": "Cmd+Shift+M"
+  }
+}

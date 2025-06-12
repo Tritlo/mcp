@@ -111,7 +111,8 @@ executable mcp
         aeson >= 2.1,
         text >= 2.0,
         containers >= 0.6,
-        scientific >= 0.3
+        scientific >= 0.3,
+        time >= 1.12
 
     -- Directories containing source files.
     hs-source-dirs:   app
