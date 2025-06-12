@@ -17,8 +17,8 @@ This is a Haskell project using Cabal as its build system.
 
 This is an implementation of the Model Context Protocol (MCP) for Haskell. The project structure follows standard Haskell conventions:
 
-- **src/MyLib.hs** - Library module (currently contains a placeholder `someFunc`)
-- **app/Main.hs** - Executable entry point that imports and uses MyLib
+- **src/** - Library modules (MCP.Types, MCP.Protocol, MCP.Server)
+- **app/Main.hs** - Executable entry point containing the MCP server implementation
 - **test/Main.hs** - Test suite entry point (currently a placeholder)
 - **schema.json** - Contains the complete MCP protocol JSON schema definitions
 

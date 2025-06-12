@@ -23,10 +23,15 @@ name:               mcp
 version:            0.1.0.0
 
 -- A short (one-line) description of the package.
--- synopsis:
+synopsis:           A Haskell implementation of the Model Context Protocol (MCP)
 
 -- A longer description of the package.
--- description:
+description:        
+    This library provides a complete implementation of the Model Context Protocol (MCP)
+    for Haskell. MCP is a protocol that enables seamless communication between AI models
+    and external tools, resources, and services. This implementation includes support for
+    resources, tools, prompts, and all standard MCP message types. It provides both a
+    server framework and type definitions for building MCP-compliant applications.
 
 -- The license under which the package is released.
 license:            MIT
@@ -63,7 +68,6 @@ library
         MCP.Types
         MCP.Protocol  
         MCP.Server
-        MyLib
 
     -- Modules included in this library but not exported.
     -- other-modules:
