@@ -6,6 +6,18 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
+-- |
+-- Module      : MCP.Types
+-- Description : Core types for the Model Context Protocol (MCP)
+-- Copyright   : (C) 2025 Matthias Pall Gissurarson
+-- License     : MIT
+-- Maintainer  : mpg@mpg.is
+-- Stability   : experimental
+-- Portability : GHC
+--
+-- This module defines the core types used in the Model Context Protocol (MCP),
+-- including JSON-RPC message types, client/server capabilities, resources,
+-- tools, prompts, and various request/response types.
 module MCP.Types (
     -- * Basic Types
     RequestId (..),
@@ -73,10 +85,8 @@ module MCP.Types (
 import Control.Applicative (Alternative ((<|>)))
 import Data.Aeson hiding (Error, Result)
 import Data.Aeson.TH
-import Data.HashMap.Strict qualified as HM
 import Data.Map (Map)
 import Data.Text (Text)
-import Data.Vector (Vector)
 import GHC.Generics
 
 -- | A uniquely identifying ID for a request in JSON-RPC

@@ -6,6 +6,18 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
+-- |
+-- Module      : MCP.Server
+-- Description : MCP server implementation
+-- Copyright   : (C) 2025 Matthias Pall Gissurarson
+-- License     : MIT
+-- Maintainer  : mpg@mpg.is
+-- Stability   : experimental
+-- Portability : GHC
+--
+-- This module provides a complete MCP server implementation, including
+-- message handling, state management, and JSON-RPC communication over
+-- standard input/output streams.
 module MCP.Server (
     -- * Server Interface
     MCPServer (..),
@@ -29,29 +41,27 @@ module MCP.Server (
 ) where
 
 import Control.Exception (catch, throwIO)
-import Control.Monad.Except (ExceptT, MonadError, runExceptT, throwError)
+import Control.Monad.Except (ExceptT, runExceptT)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Reader (MonadReader, ReaderT, ask, runReaderT)
-import Control.Monad.State.Strict (MonadState, StateT, get, modify, put, runStateT)
-import Data.Aeson (FromJSON, ToJSON, Value, decode, encode, fromJSON, object, toJSON, (.=))
+import Control.Monad.Reader (ReaderT, ask, runReaderT)
+import Control.Monad.State.Strict (StateT, get, put, runStateT)
+import Data.Aeson (ToJSON, decode, encode, fromJSON, object, toJSON)
 import Data.Aeson qualified as Aeson
-import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as BSC
-import Data.ByteString.Lazy (ByteString)
 import Data.ByteString.Lazy qualified as LBS
 import Data.ByteString.Lazy.Char8 qualified as LBSC
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.IO qualified as TIO
-import System.IO (Handle, hFlush, stdin, stdout)
+import System.IO (Handle, hFlush)
 import System.IO.Error (isEOFError)
 
 import MCP.Protocol hiding (capabilities)
 import MCP.Protocol qualified as Protocol
 import MCP.Types
 
+-- | Server state tracking initialization, capabilities, and subscriptions
 data ServerState = ServerState
     { serverInitialized :: Bool
     , serverCapabilities :: ServerCapabilities
@@ -61,6 +71,7 @@ data ServerState = ServerState
     }
     deriving (Show)
 
+-- | Configuration for running an MCP server
 data ServerConfig = ServerConfig
     { configInput :: Handle
     , configOutput :: Handle
@@ -69,8 +80,10 @@ data ServerConfig = ServerConfig
     }
     deriving (Show)
 
+-- | The monad stack for MCP server operations
 type MCPServerM = ReaderT ServerConfig (StateT ServerState (ExceptT Text IO))
 
+-- | Run an MCPServerM computation with the given config and initial state
 runMCPServer :: ServerConfig -> ServerState -> MCPServerM a -> IO (Either Text (a, ServerState))
 runMCPServer config state action = runExceptT $ runStateT (runReaderT action config) state
 
@@ -84,6 +97,7 @@ initialServerState caps =
         , subscriptions = Map.empty
         }
 
+-- | Type class for implementing MCP server handlers
 class (Monad m) => MCPServer m where
     handleListResources :: ListResourcesParams -> m ListResourcesResult
     handleReadResource :: ReadResourceParams -> m ReadResourceResult
@@ -95,24 +109,28 @@ class (Monad m) => MCPServer m where
     handleComplete :: CompleteParams -> m CompleteResult
     handleSetLevel :: SetLevelParams -> m ()
 
+-- | Send a JSON-RPC response
 sendResponse :: (MonadIO m, ToJSON a) => Handle -> RequestId -> a -> m ()
 sendResponse handle reqId result = liftIO $ do
     let response = JSONRPCResponse "2.0" reqId (toJSON result)
     LBSC.hPutStrLn handle (encode response)
     hFlush handle
 
+-- | Send a JSON-RPC error response
 sendError :: (MonadIO m) => Handle -> RequestId -> JSONRPCErrorInfo -> m ()
 sendError handle reqId errorInfo = liftIO $ do
     let response = JSONRPCError "2.0" reqId errorInfo
     LBSC.hPutStrLn handle (encode response)
     hFlush handle
 
+-- | Send a JSON-RPC notification
 sendNotification :: (MonadIO m, ToJSON a) => Handle -> Text -> a -> m ()
 sendNotification handle method params = liftIO $ do
     let notification = JSONRPCNotification "2.0" method (Just (toJSON params))
     LBSC.hPutStrLn handle (encode notification)
     hFlush handle
 
+-- | Handle an incoming JSON-RPC message
 handleMessage :: (MCPServer MCPServerM) => BSC.ByteString -> MCPServerM (Maybe ())
 handleMessage input = do
     case decode (LBS.fromStrict input) :: Maybe JSONRPCMessage of
@@ -134,6 +152,7 @@ handleMessage input = do
                     JSONRPCErrorInfo (-32600) "Invalid Request" Nothing
                 return Nothing
 
+-- | Handle a JSON-RPC request
 handleRequest :: (MCPServer MCPServerM) => JSONRPCRequest -> MCPServerM ()
 handleRequest (JSONRPCRequest _ reqId method params) = do
     config <- ask
@@ -325,10 +344,12 @@ handlePing reqId = do
     -- Ping response is just an empty object in MCP
     sendResponse (configOutput config) reqId (object [])
 
+-- | Handle a JSON-RPC notification
 handleNotification :: JSONRPCNotification -> MCPServerM ()
-handleNotification notif = do
+handleNotification _ = do
     return ()
 
+-- | Run the MCP server with the given configuration
 runServer :: (MCPServer MCPServerM) => ServerConfig -> IO ()
 runServer config = do
     let initialState = initialServerState (configCapabilities config)
