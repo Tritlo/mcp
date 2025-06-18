@@ -12,6 +12,7 @@ This project provides a type-safe, comprehensive implementation of the Model Con
 - **Type-Safe Design**: Full Haskell type system integration with automatic JSON serialization
 - **Multiple Transport Options**: Both StdIO and HTTP transport support
 - **MCP Transport Compliance**: HTTP implementation follows the official MCP transport specification
+- **Production-Ready HTTP Server**: Configurable OAuth, timing, and security parameters
 - **Extensible Server Interface**: Clean typeclass-based API for implementing custom servers
 - **Working Example Server**: Demonstrates basic MCP functionality
 
@@ -44,6 +45,7 @@ The implementation is organized into five main modules:
 - HTTP transport implementation following MCP specification
 - RESTful JSON-RPC API at `/mcp` endpoint
 - Built with Servant and Warp for production use
+- OAuth 2.0 authentication support (optional)
 
 ## Quick Start
 
@@ -84,8 +86,13 @@ main = do
         }
   let config = HTTPServerConfig
         { httpPort = 8080
+        , httpBaseUrl = "http://localhost:8080"  -- Configure base URL
         , httpServerInfo = serverInfo
         , httpCapabilities = capabilities
+        , httpEnableLogging = False
+        , httpOAuthConfig = Nothing  -- No OAuth
+        , httpJWK = Nothing  -- Auto-generated
+        , httpProtocolVersion = "2024-11-05"  -- MCP protocol version
         }
   runServerHTTP config
 ```
@@ -103,6 +110,75 @@ ghc -o mcp-http MyHTTPServer.hs
 ```
 
 The HTTP server will start on port 8080 with the MCP endpoint available at `POST /mcp`.
+
+### OAuth Authentication (HTTP Transport)
+
+The HTTP transport supports MCP-compliant OAuth 2.1 authentication with mandatory PKCE:
+
+**MCP OAuth Requirements:**
+- **PKCE Required**: All OAuth flows MUST use PKCE (Proof Key for Code Exchange)
+- **HTTPS Required**: OAuth endpoints must use HTTPS in production
+- **Grant Types**: Supports Authorization Code (user flows) and Client Credentials (app-to-app)
+- **Token Format**: Bearer tokens in Authorization header only (never in query strings)
+
+**OAuth Endpoints:**
+- **Metadata Discovery**: `/.well-known/oauth-authorization-server` - Returns OAuth server metadata
+- **Dynamic Registration**: `/register` - Allows clients to register dynamically
+- **Authorization**: `/authorize` - Initiates authorization flow with PKCE
+- **Token Exchange**: `/token` - Exchanges authorization code for access token
+
+**Token Format**: The server generates proper JWT tokens using servant-auth-server, preventing authentication loops that can occur with simple UUID-based tokens.
+
+**Complete OAuth Flow:**
+
+1. **Discovery**: Client discovers OAuth metadata
+   ```bash
+   curl http://localhost:8080/.well-known/oauth-authorization-server
+   ```
+
+2. **Registration**: Client registers dynamically
+   ```bash
+   curl -X POST http://localhost:8080/register \
+     -H "Content-Type: application/json" \
+     -d '{
+       "client_name": "My MCP Client",
+       "redirect_uris": ["http://localhost:3000/callback"],
+       "grant_types": ["authorization_code", "refresh_token"],
+       "response_types": ["code"],
+       "token_endpoint_auth_method": "none"
+     }'
+   ```
+
+3. **Authorization**: User authorizes with PKCE
+   ```
+   http://localhost:8080/authorize?
+     response_type=code&
+     client_id=CLIENT_ID&
+     redirect_uri=http://localhost:3000/callback&
+     code_challenge=CHALLENGE&
+     code_challenge_method=S256&
+     scope=mcp:read%20mcp:write
+   ```
+
+4. **Token Exchange**: Exchange code for token
+   ```bash
+   curl -X POST http://localhost:8080/token \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "grant_type=authorization_code&code=AUTH_CODE&code_verifier=VERIFIER"
+   ```
+
+5. **API Access**: Use token for authenticated requests
+   ```bash
+   curl -X POST http://localhost:8080/mcp \
+     -H "Authorization: Bearer ACCESS_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"jsonrpc":"2.0","id":1,"method":"ping"}'
+   ```
+
+**Error Responses (MCP-compliant):**
+- `401 Unauthorized`: Invalid or expired token
+- `403 Forbidden`: Insufficient permissions
+- `400 Bad Request`: Malformed request
 
 ### Implementing a Custom Server
 
@@ -152,6 +228,8 @@ runHTTP = do
         { httpPort = 8080
         , httpServerInfo = Implementation "my-server" "1.0.0"
         , httpCapabilities = serverCapabilities
+        , httpEnableLogging = False
+        , httpOAuthConfig = Nothing  -- or Just oauthConfig for OAuth
         }
   runServerHTTP config
 ```
@@ -220,6 +298,12 @@ test/
 - **servant-server**: Type-safe web API framework  
 - **wai**: Web application interface
 - **http-types**: HTTP status codes and headers
+- **servant-auth**: JWT authentication for Servant
+- **servant-auth-server**: Server-side JWT implementation
+- **jose**: JSON Object Signing and Encryption
+- **cryptonite**: Cryptographic primitives for PKCE
+- **base64-bytestring**: Base64 encoding for PKCE challenges
+- **http-conduit**: HTTP client for OAuth metadata discovery
 
 ### Testing with MCP Clients
 

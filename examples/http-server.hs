@@ -20,6 +20,7 @@
 --
 -- Command line options:
 -- cabal run mcp-http -- --port 8080 --log
+--
 
 module Main where
 
@@ -33,12 +34,14 @@ import MCP.Protocol hiding (CompletionResult)
 import MCP.Protocol qualified as Protocol
 import MCP.Server
 import MCP.Server.HTTP
+import MCP.Server.Auth
 import MCP.Types
 
 -- | Command line options
 data Options = Options
     { optPort :: Int
     , optEnableLogging :: Bool
+    , optEnableOAuth :: Bool
     }
     deriving (Show)
 
@@ -56,6 +59,11 @@ optionsParser = Options
         ( long "log"
        <> short 'l'
        <> help "Enable request/response logging"
+        )
+    <*> switch
+        ( long "oauth"
+       <> short 'o'
+       <> help "Enable OAuth authentication (demo mode)"
         )
 
 -- | Full parser with help
@@ -156,21 +164,75 @@ main = do
                 , experimental = Nothing
                 }
 
+    let baseUrl = T.pack $ "http://localhost:" ++ show optPort
+        oauthConfig = if optEnableOAuth
+            then Just $ defaultDemoOAuthConfig
+                    { oauthProviders = 
+                        [ OAuthProvider
+                            { providerName = "demo"
+                            , clientId = "demo-client"
+                            , clientSecret = Just "demo-secret"
+                            , authorizationEndpoint = baseUrl <> "/authorize"
+                            , tokenEndpoint = baseUrl <> "/token"
+                            , userInfoEndpoint = Nothing
+                            , scopes = ["mcp:read", "mcp:write"]
+                            , grantTypes = [AuthorizationCode]
+                            , requiresPKCE = True  -- MCP requires PKCE
+                            , metadataEndpoint = Nothing
+                            }
+                        ]
+                    -- Override demo defaults for example
+                    , authCodeExpirySeconds = 600  -- 10 minutes
+                    , accessTokenExpirySeconds = 3600  -- 1 hour
+                    , demoUserIdTemplate = Just "demo-user-{clientId}"
+                    , demoEmailDomain = "demo.example.com"
+                    , demoUserName = "Demo User"
+                    , authorizationSuccessTemplate = Just $ 
+                        "Demo Authorization Successful!\n\n" <>
+                        "Redirect to: {redirectUri}?code={code}{state}\n\n" <>
+                        "This is a demo server. In production, this would redirect automatically."
+                    }
+            else Nothing
+            
     let config =
             HTTPServerConfig
                 { httpPort = optPort
+                , httpBaseUrl = baseUrl  -- Configurable base URL
                 , httpServerInfo = serverInfo
                 , httpCapabilities = capabilities
                 , httpEnableLogging = optEnableLogging
+                , httpOAuthConfig = oauthConfig
+                , httpJWK = Nothing  -- Will be auto-generated
+                , httpProtocolVersion = "2024-11-05"  -- Configurable protocol version
                 }
 
     putStrLn $ "HTTP server configured, starting on port " ++ show optPort ++ "..."
-    putStrLn $ "MCP endpoint available at: POST http://localhost:" ++ show optPort ++ "/mcp"
-    putStrLn ""
-    putStrLn "Example test command:"
-    putStrLn $ "curl -X POST http://localhost:" ++ show optPort ++ "/mcp \\"
-    putStrLn "  -H \"Content-Type: application/json\" \\"
-    putStrLn "  -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}'"
+    putStrLn $ "MCP endpoint available at: POST " ++ T.unpack baseUrl ++ "/mcp"
+    
+    if optEnableOAuth
+        then do
+            putStrLn ""
+            putStrLn "OAuth Demo Flow:"
+            putStrLn "1. Generate PKCE code verifier and challenge"
+            putStrLn "2. Open authorization URL in browser:"
+            putStrLn $ "   " ++ T.unpack baseUrl ++ "/authorize?response_type=code&client_id=demo-client&redirect_uri=http://localhost:3000/callback&code_challenge=YOUR_CHALLENGE&code_challenge_method=S256&scope=mcp:read%20mcp:write"
+            putStrLn "3. Exchange authorization code for token:"
+            putStrLn $ "   curl -X POST " ++ T.unpack baseUrl ++ "/token \\"
+            putStrLn "     -H \"Content-Type: application/x-www-form-urlencoded\" \\"
+            putStrLn "     -d \"grant_type=authorization_code&code=AUTH_CODE&code_verifier=YOUR_VERIFIER\""
+            putStrLn "4. Use access token for MCP requests:"
+            putStrLn $ "   curl -X POST " ++ T.unpack baseUrl ++ "/mcp \\"
+            putStrLn "     -H \"Authorization: Bearer ACCESS_TOKEN\" \\"
+            putStrLn "     -H \"Content-Type: application/json\" \\"
+            putStrLn "     -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}'"
+        else do
+            putStrLn ""
+            putStrLn "Example test command:"
+            putStrLn $ "curl -X POST " ++ T.unpack baseUrl ++ "/mcp \\"
+            putStrLn "  -H \"Content-Type: application/json\" \\"
+            putStrLn "  -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}'"
+    
     putStrLn ""
     
     runServerHTTP config
+
