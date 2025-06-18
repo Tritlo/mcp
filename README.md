@@ -1,3 +1,6 @@
+![image](https://github.com/user-attachments/assets/69dc29d5-5228-467c-8288-16c18192f986)
+
+
 # MCP-Haskell
 
 A complete implementation of the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) for Haskell.
