@@ -5,7 +5,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -275,7 +274,7 @@ processHTTPNotification _ _ _ = do
 processHTTPRequest :: (MCPServer MCPServerM) => HTTPServerConfig -> TVar ServerState -> JSONRPCRequest -> IO (Either Text Aeson.Value)
 processHTTPRequest httpConfig stateVar req = do
     -- Read the current state
-    currentState <- atomically $ readTVar stateVar
+    currentState <- readTVarIO stateVar
     let dummyConfig =
             ServerConfig
                 { configInput = undefined -- Not used in HTTP mode
@@ -596,7 +595,7 @@ handleAuthorize config oauthStateVar responseType clientId redirectUri codeChall
         s{authCodes = Map.insert code authCode (authCodes s)}
 
     -- Return the callback URL with auth code
-    let stateParam = maybe "" (\s -> "&state=" <> s) mState
+    let stateParam = maybe "" ("&state=" <>) mState
         defaultTemplate =
             "Authorization successful!\n\n"
                 <> "Redirect to: "
@@ -609,10 +608,7 @@ handleAuthorize config oauthStateVar responseType clientId redirectUri codeChall
         template =
             maybe
                 defaultTemplate
-                ( \t ->
-                    T.replace "{redirectUri}" redirectUri $
-                        T.replace "{code}" code $
-                            T.replace "{state}" stateParam t
+                ( T.replace "{redirectUri}" redirectUri . T.replace "{code}" code . T.replace "{state}" stateParam
                 )
                 (authorizationSuccessTemplate =<< httpOAuthConfig config)
     return template
@@ -782,9 +778,7 @@ runServerHTTP config = do
     -- Initialize JWT settings if OAuth is enabled
     jwtSettings <- case httpJWK config of
         Just jwk -> return $ defaultJWTSettings jwk
-        Nothing -> do
-            key <- generateKey
-            return $ defaultJWTSettings key
+        Nothing -> defaultJWTSettings <$> generateKey
 
     -- Initialize the server state
     stateVar <- newTVarIO $ initialServerState (httpCapabilities config)

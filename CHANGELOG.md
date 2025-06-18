@@ -39,6 +39,10 @@
   - Move demo-specific configuration to examples/http-server.hs
   - Add `defaultDemoOAuthConfig` helper for testing
   - Make server library more robust and configurable for production use
+* Package metadata cleanup and code formatting improvements
+* Remove unused MyLib module
+* Add MCP configuration and examples
+* Published to Hackage
 
 ## 0.1.0.0 -- YYYY-mm-dd
 

@@ -235,8 +235,7 @@ introspectToken endpoint token = liftIO $ do
     let requestWithBody =
             setRequestMethod "POST" $
                 setRequestBodyJSON (Aeson.object [("token", Aeson.String token)]) $
-                    addRequestHeader "Content-Type" "application/json" $
-                        request
+                    addRequestHeader "Content-Type" "application/json" request
 
     response <- httpJSON requestWithBody
     let tokenInfo = getResponseBody response

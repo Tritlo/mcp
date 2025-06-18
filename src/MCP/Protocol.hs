@@ -4,6 +4,9 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use newtype instead of data" #-}
 
 {- |
 Module      : MCP.Protocol
@@ -227,9 +230,8 @@ instance FromJSON InitializeRequest where
             else fail "Expected method 'initialize'"
 
 -- | Ping request parameters
-data PingParams = PingParams
-    { _meta :: Maybe Metadata
-    }
+data PingParams where
+    PingParams :: {_meta :: Maybe Metadata} -> PingParams
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''PingParams)
@@ -244,9 +246,7 @@ data PingRequest = PingRequest
 instance ToJSON PingRequest where
     toJSON (PingRequest _ p) =
         object $
-            [ "method" .= ("ping" :: Text)
-            ]
-                ++ maybe [] (\pr -> ["params" .= pr]) p
+            ("method" .= ("ping" :: Text)) : maybe [] (\pr -> ["params" .= pr]) p
 
 instance FromJSON PingRequest where
     parseJSON = withObject "PingRequest" $ \o -> do
@@ -256,9 +256,10 @@ instance FromJSON PingRequest where
             else fail "Expected method 'ping'"
 
 -- | List resources request parameters
-data ListResourcesParams = ListResourcesParams
-    { cursor :: Maybe Cursor
-    }
+data ListResourcesParams where
+    ListResourcesParams ::
+        {cursor :: Maybe Cursor} ->
+        ListResourcesParams
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions{omitNothingFields = True} ''ListResourcesParams)
@@ -273,9 +274,7 @@ data ListResourcesRequest = ListResourcesRequest
 instance ToJSON ListResourcesRequest where
     toJSON (ListResourcesRequest _ p) =
         object $
-            [ "method" .= ("resources/list" :: Text)
-            ]
-                ++ maybe [] (\pr -> ["params" .= pr]) p
+            ("method" .= ("resources/list" :: Text)) : maybe [] (\pr -> ["params" .= pr]) p
 
 instance FromJSON ListResourcesRequest where
     parseJSON = withObject "ListResourcesRequest" $ \o -> do
@@ -285,9 +284,10 @@ instance FromJSON ListResourcesRequest where
             else fail "Expected method 'resources/list'"
 
 -- | List resource templates request parameters
-data ListResourceTemplatesParams = ListResourceTemplatesParams
-    { cursor :: Maybe Cursor
-    }
+data ListResourceTemplatesParams where
+    ListResourceTemplatesParams ::
+        {cursor :: Maybe Cursor} ->
+        ListResourceTemplatesParams
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions{omitNothingFields = True} ''ListResourceTemplatesParams)
@@ -302,9 +302,7 @@ data ListResourceTemplatesRequest = ListResourceTemplatesRequest
 instance ToJSON ListResourceTemplatesRequest where
     toJSON (ListResourceTemplatesRequest _ p) =
         object $
-            [ "method" .= ("resources/templates/list" :: Text)
-            ]
-                ++ maybe [] (\pr -> ["params" .= pr]) p
+            ("method" .= ("resources/templates/list" :: Text)) : maybe [] (\pr -> ["params" .= pr]) p
 
 instance FromJSON ListResourceTemplatesRequest where
     parseJSON = withObject "ListResourceTemplatesRequest" $ \o -> do
@@ -314,9 +312,8 @@ instance FromJSON ListResourceTemplatesRequest where
             else fail "Expected method 'resources/templates/list'"
 
 -- | Read resource request parameters
-data ReadResourceParams = ReadResourceParams
-    { uri :: Text
-    }
+data ReadResourceParams where
+    ReadResourceParams :: {uri :: Text} -> ReadResourceParams
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions ''ReadResourceParams)
@@ -343,9 +340,8 @@ instance FromJSON ReadResourceRequest where
             else fail "Expected method 'resources/read'"
 
 -- | Subscribe request parameters
-data SubscribeParams = SubscribeParams
-    { uri :: Text
-    }
+data SubscribeParams where
+    SubscribeParams :: {uri :: Text} -> SubscribeParams
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions ''SubscribeParams)
@@ -372,9 +368,8 @@ instance FromJSON SubscribeRequest where
             else fail "Expected method 'resources/subscribe'"
 
 -- | Unsubscribe request parameters
-data UnsubscribeParams = UnsubscribeParams
-    { uri :: Text
-    }
+data UnsubscribeParams where
+    UnsubscribeParams :: {uri :: Text} -> UnsubscribeParams
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions ''UnsubscribeParams)
@@ -401,9 +396,8 @@ instance FromJSON UnsubscribeRequest where
             else fail "Expected method 'resources/unsubscribe'"
 
 -- | List prompts request parameters
-data ListPromptsParams = ListPromptsParams
-    { cursor :: Maybe Cursor
-    }
+data ListPromptsParams where
+    ListPromptsParams :: {cursor :: Maybe Cursor} -> ListPromptsParams
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions{omitNothingFields = True} ''ListPromptsParams)
@@ -418,9 +412,7 @@ data ListPromptsRequest = ListPromptsRequest
 instance ToJSON ListPromptsRequest where
     toJSON (ListPromptsRequest _ p) =
         object $
-            [ "method" .= ("prompts/list" :: Text)
-            ]
-                ++ maybe [] (\pr -> ["params" .= pr]) p
+            ("method" .= ("prompts/list" :: Text)) : maybe [] (\pr -> ["params" .= pr]) p
 
 instance FromJSON ListPromptsRequest where
     parseJSON = withObject "ListPromptsRequest" $ \o -> do
@@ -460,9 +452,8 @@ instance FromJSON GetPromptRequest where
             else fail "Expected method 'prompts/get'"
 
 -- | List tools request parameters
-data ListToolsParams = ListToolsParams
-    { cursor :: Maybe Cursor
-    }
+data ListToolsParams where
+    ListToolsParams :: {cursor :: Maybe Cursor} -> ListToolsParams
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions{omitNothingFields = True} ''ListToolsParams)
@@ -477,9 +468,7 @@ data ListToolsRequest = ListToolsRequest
 instance ToJSON ListToolsRequest where
     toJSON (ListToolsRequest _ p) =
         object $
-            [ "method" .= ("tools/list" :: Text)
-            ]
-                ++ maybe [] (\pr -> ["params" .= pr]) p
+            ("method" .= ("tools/list" :: Text)) : maybe [] (\pr -> ["params" .= pr]) p
 
 instance FromJSON ListToolsRequest where
     parseJSON = withObject "ListToolsRequest" $ \o -> do
@@ -519,9 +508,8 @@ instance FromJSON CallToolRequest where
             else fail "Expected method 'tools/call'"
 
 -- | Set level request parameters
-data SetLevelParams = SetLevelParams
-    { level :: LoggingLevel
-    }
+data SetLevelParams where
+    SetLevelParams :: {level :: LoggingLevel} -> SetLevelParams
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions ''SetLevelParams)
@@ -640,9 +628,8 @@ instance FromJSON CreateMessageRequest where
             else fail "Expected method 'sampling/createMessage'"
 
 -- | List roots request parameters
-data ListRootsParams = ListRootsParams
-    { _meta :: Maybe Metadata
-    }
+data ListRootsParams where
+    ListRootsParams :: {_meta :: Maybe Metadata} -> ListRootsParams
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''ListRootsParams)
@@ -657,9 +644,7 @@ data ListRootsRequest = ListRootsRequest
 instance ToJSON ListRootsRequest where
     toJSON (ListRootsRequest _ p) =
         object $
-            [ "method" .= ("roots/list" :: Text)
-            ]
-                ++ maybe [] (\pr -> ["params" .= pr]) p
+            ("method" .= ("roots/list" :: Text)) : maybe [] (\pr -> ["params" .= pr]) p
 
 instance FromJSON ListRootsRequest where
     parseJSON = withObject "ListRootsRequest" $ \o -> do
@@ -824,9 +809,8 @@ instance FromJSON CancelledNotification where
             else fail "Expected method 'notifications/cancelled'"
 
 -- | Initialized notification parameters
-data InitializedParams = InitializedParams
-    { _meta :: Maybe Metadata
-    }
+data InitializedParams where
+    InitializedParams :: {_meta :: Maybe Metadata} -> InitializedParams
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''InitializedParams)
@@ -841,9 +825,7 @@ data InitializedNotification = InitializedNotification
 instance ToJSON InitializedNotification where
     toJSON (InitializedNotification _ p) =
         object $
-            [ "method" .= ("notifications/initialized" :: Text)
-            ]
-                ++ maybe [] (\pr -> ["params" .= pr]) p
+            ("method" .= ("notifications/initialized" :: Text)) : maybe [] (\pr -> ["params" .= pr]) p
 
 instance FromJSON InitializedNotification where
     parseJSON = withObject "InitializedNotification" $ \o -> do
@@ -894,9 +876,7 @@ data ResourceListChangedNotification = ResourceListChangedNotification
 instance ToJSON ResourceListChangedNotification where
     toJSON (ResourceListChangedNotification _ p) =
         object $
-            [ "method" .= ("notifications/resources/list_changed" :: Text)
-            ]
-                ++ maybe [] (\pr -> ["params" .= pr]) p
+            ("method" .= ("notifications/resources/list_changed" :: Text)) : maybe [] (\pr -> ["params" .= pr]) p
 
 instance FromJSON ResourceListChangedNotification where
     parseJSON = withObject "ResourceListChangedNotification" $ \o -> do
@@ -944,9 +924,7 @@ data PromptListChangedNotification = PromptListChangedNotification
 instance ToJSON PromptListChangedNotification where
     toJSON (PromptListChangedNotification _ p) =
         object $
-            [ "method" .= ("notifications/prompts/list_changed" :: Text)
-            ]
-                ++ maybe [] (\pr -> ["params" .= pr]) p
+            ("method" .= ("notifications/prompts/list_changed" :: Text)) : maybe [] (\pr -> ["params" .= pr]) p
 
 instance FromJSON PromptListChangedNotification where
     parseJSON = withObject "PromptListChangedNotification" $ \o -> do
@@ -965,9 +943,7 @@ data ToolListChangedNotification = ToolListChangedNotification
 instance ToJSON ToolListChangedNotification where
     toJSON (ToolListChangedNotification _ p) =
         object $
-            [ "method" .= ("notifications/tools/list_changed" :: Text)
-            ]
-                ++ maybe [] (\pr -> ["params" .= pr]) p
+            ("method" .= ("notifications/tools/list_changed" :: Text)) : maybe [] (\pr -> ["params" .= pr]) p
 
 instance FromJSON ToolListChangedNotification where
     parseJSON = withObject "ToolListChangedNotification" $ \o -> do
@@ -1027,9 +1003,7 @@ data RootsListChangedNotification = RootsListChangedNotification
 instance ToJSON RootsListChangedNotification where
     toJSON (RootsListChangedNotification _ p) =
         object $
-            [ "method" .= ("notifications/roots/list_changed" :: Text)
-            ]
-                ++ maybe [] (\pr -> ["params" .= pr]) p
+            ("method" .= ("notifications/roots/list_changed" :: Text)) : maybe [] (\pr -> ["params" .= pr]) p
 
 instance FromJSON RootsListChangedNotification where
     parseJSON = withObject "RootsListChangedNotification" $ \o -> do

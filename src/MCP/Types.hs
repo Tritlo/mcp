@@ -449,9 +449,8 @@ instance FromJSON PromptReference where
             else fail "Expected type 'ref/prompt'"
 
 -- | Hints to use for model selection
-data ModelHint = ModelHint
-    { name :: Maybe Text
-    }
+data ModelHint where
+    ModelHint :: {name :: Maybe Text} -> ModelHint
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions{omitNothingFields = True} ''ModelHint)
@@ -493,17 +492,17 @@ data SamplingMessage = SamplingMessage
 $(deriveJSON defaultOptions ''SamplingMessage)
 
 -- | Roots capability
-data RootsCapability = RootsCapability
-    { listChanged :: Maybe Bool
-    }
+data RootsCapability where
+    RootsCapability :: {listChanged :: Maybe Bool} -> RootsCapability
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions{omitNothingFields = True} ''RootsCapability)
 
 -- | Prompts capability
-data PromptsCapability = PromptsCapability
-    { listChanged :: Maybe Bool
-    }
+data PromptsCapability where
+    PromptsCapability ::
+        {listChanged :: Maybe Bool} ->
+        PromptsCapability
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions{omitNothingFields = True} ''PromptsCapability)
@@ -518,9 +517,8 @@ data ResourcesCapability = ResourcesCapability
 $(deriveJSON defaultOptions{omitNothingFields = True} ''ResourcesCapability)
 
 -- | Tools capability
-data ToolsCapability = ToolsCapability
-    { listChanged :: Maybe Bool
-    }
+data ToolsCapability where
+    ToolsCapability :: {listChanged :: Maybe Bool} -> ToolsCapability
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions{omitNothingFields = True} ''ToolsCapability)
@@ -607,9 +605,8 @@ newtype Metadata = Metadata (Map Text Value)
     deriving newtype (ToJSON, FromJSON)
 
 -- | Base result type
-data Result = Result
-    { _meta :: Maybe Metadata
-    }
+data Result where
+    Result :: {_meta :: Maybe Metadata} -> Result
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''Result)
