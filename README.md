@@ -10,13 +10,14 @@ This project provides a type-safe, comprehensive implementation of the Model Con
 
 - **Complete MCP Protocol Implementation**: All MCP message types, requests, responses, and notifications
 - **Type-Safe Design**: Full Haskell type system integration with automatic JSON serialization
-- **JSON-RPC Transport**: Standard I/O transport for connecting to MCP hosts
+- **Multiple Transport Options**: Both StdIO and HTTP transport support
+- **MCP Transport Compliance**: HTTP implementation follows the official MCP transport specification
 - **Extensible Server Interface**: Clean typeclass-based API for implementing custom servers
 - **Working Example Server**: Demonstrates basic MCP functionality
 
 ## Architecture
 
-The implementation is organized into three main modules:
+The implementation is organized into five main modules:
 
 ### `MCP.Types`
 - Core MCP data types (Content, Resource, Tool, Prompt, etc.)
@@ -30,10 +31,19 @@ The implementation is organized into three main modules:
 - Union types for organizing related messages
 
 ### `MCP.Server`
-- Server infrastructure with `MCPServerM` monad stack
+- Core server infrastructure with `MCPServerM` monad stack
 - `MCPServer` typeclass for implementing custom servers
-- Request routing and error handling
-- JSON-RPC transport layer over stdin/stdout
+- Shared types and utilities for both transport methods
+
+### `MCP.Server.StdIO`
+- StdIO transport implementation
+- JSON-RPC communication over stdin/stdout
+- Suitable for process-based MCP clients
+
+### `MCP.Server.HTTP`
+- HTTP transport implementation following MCP specification
+- RESTful JSON-RPC API at `/mcp` endpoint
+- Built with Servant and Warp for production use
 
 ## Quick Start
 
@@ -45,18 +55,65 @@ cabal build
 
 ### Running the Example Server
 
+**StdIO Mode (default):**
 ```bash
 cabal run mcp
 ```
 
 The server will start and listen for MCP messages on stdin, responding on stdout.
 
+**HTTP Mode:**
+Create a simple HTTP server runner:
+
+```haskell
+{-# LANGUAGE OverloadedStrings #-}
+
+import MCP.Server.HTTP
+import MCP.Types
+
+main :: IO ()
+main = do
+  let serverInfo = Implementation "mcp-haskell-http" "0.1.0"
+  let capabilities = ServerCapabilities
+        { resources = Just $ ResourcesCapability Nothing Nothing
+        , tools = Just $ ToolsCapability Nothing
+        , prompts = Just $ PromptsCapability Nothing
+        , completions = Nothing
+        , logging = Nothing
+        , experimental = Nothing
+        }
+  let config = HTTPServerConfig
+        { httpPort = 8080
+        , httpServerInfo = serverInfo
+        , httpCapabilities = capabilities
+        }
+  runServerHTTP config
+```
+
+Then compile and run:
+```bash
+cabal build mcp-http
+cabal run mcp-http
+```
+
+Or compile directly:
+```bash
+ghc -o mcp-http MyHTTPServer.hs
+./mcp-http
+```
+
+The HTTP server will start on port 8080 with the MCP endpoint available at `POST /mcp`.
+
 ### Implementing a Custom Server
+
+The same server implementation works for both transport methods:
 
 ```haskell
 {-# LANGUAGE OverloadedStrings #-}
 
 import MCP.Server
+import MCP.Server.StdIO  -- For StdIO transport
+import MCP.Server.HTTP   -- For HTTP transport
 import MCP.Types
 import MCP.Protocol
 
@@ -77,15 +134,26 @@ instance MCPServer MCPServerM where
     
   -- Implement other required methods...
 
-main :: IO ()
-main = do
+-- StdIO version
+runStdIO :: IO ()
+runStdIO = do
   let config = ServerConfig
         { configInput = stdin
         , configOutput = stdout
         , configServerInfo = Implementation "my-server" "1.0.0"
         , configCapabilities = serverCapabilities
         }
-  runServer config
+  MCP.Server.StdIO.runServer config
+
+-- HTTP version  
+runHTTP :: IO ()
+runHTTP = do
+  let config = HTTPServerConfig
+        { httpPort = 8080
+        , httpServerInfo = Implementation "my-server" "1.0.0"
+        , httpCapabilities = serverCapabilities
+        }
+  runServerHTTP config
 ```
 
 ## MCP Protocol Support
@@ -122,35 +190,51 @@ This implementation supports the complete MCP protocol specification:
 ```
 src/
 ├── MCP/
-│   ├── Types.hs      # Core MCP data types
-│   ├── Protocol.hs   # JSON-RPC protocol messages  
-│   └── Server.hs     # Server infrastructure
-└── MyLib.hs          # Placeholder library module
+│   ├── Types.hs          # Core MCP data types
+│   ├── Protocol.hs       # JSON-RPC protocol messages
+│   ├── Server.hs         # Core server infrastructure
+│   └── Server/
+│       ├── StdIO.hs      # StdIO transport implementation
+│       └── HTTP.hs       # HTTP transport implementation
 
 app/
-└── Main.hs           # Example MCP server implementation
+└── Main.hs               # Example MCP server (StdIO mode)
 
 test/
-└── Main.hs           # Test suite (placeholder)
+└── Main.hs               # Test suite (placeholder)
 ```
 
 ## Development
 
 ### Dependencies
 
+**Core Dependencies:**
 - **aeson**: JSON serialization/deserialization
 - **text**: Text processing
 - **containers**: Map and other container types
 - **bytestring**: Binary data handling
 - **mtl/transformers**: Monad transformers for MCPServerM
 
+**HTTP Server Dependencies:**
+- **warp**: High-performance HTTP server
+- **servant-server**: Type-safe web API framework  
+- **wai**: Web application interface
+- **http-types**: HTTP status codes and headers
+
 ### Testing with MCP Clients
 
-To test with Claude Desktop or other MCP clients:
+**StdIO Transport (for process-based clients):**
 
 1. Build the server: `cabal build`
 2. Configure your MCP client to use: `cabal run mcp`
 3. The server communicates via JSON-RPC over stdin/stdout
+
+**HTTP Transport (for web-based clients):**
+
+1. Build and run HTTP server: `runServerHTTP config`
+2. Client connects to `POST http://localhost:8080/mcp`
+3. Send JSON-RPC requests with `Content-Type: application/json`
+4. Supports both single responses and future SSE streaming
 
 ### Example MCP Client Configuration
 
@@ -214,7 +298,8 @@ The server includes comprehensive error handling:
 This is the first known implementation of MCP for Haskell. Contributions are welcome!
 
 Areas for improvement:
-- Additional transport mechanisms (HTTP, WebSocket)
+- Server-Sent Events (SSE) support for HTTP transport
+- WebSocket transport implementation
 - More comprehensive example servers
 - Performance optimizations
 - Enhanced error messages

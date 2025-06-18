@@ -2,25 +2,77 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+-- |
+-- Example HTTP MCP Server
+-- 
+-- This example demonstrates how to run the MCP server over HTTP transport.
+-- The server will expose the MCP API at POST /mcp
+--
+-- To test:
+-- 1. Compile: cabal build mcp-http
+-- 2. Run: cabal run mcp-http
+-- 3. Send JSON-RPC requests to: http://localhost:<port>/mcp
+--
+-- Example request:
+-- curl -X POST http://localhost:8080/mcp \
+--   -H "Content-Type: application/json" \
+--   -d '{"jsonrpc":"2.0","id":1,"method":"ping"}'
+--
+-- Command line options:
+-- cabal run mcp-http -- --port 8080 --log
+
 module Main where
 
+import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Text qualified as T
 import Data.Time (defaultTimeLocale, formatTime, getCurrentTime)
-import System.IO (stdin, stdout)
+import Options.Applicative
 
-import MCP.Protocol
+import MCP.Protocol hiding (CompletionResult)
+import MCP.Protocol qualified as Protocol
 import MCP.Server
-import MCP.Server.StdIO
+import MCP.Server.HTTP
 import MCP.Types
 
--- | Minimal MCP Server implementation
+-- | Command line options
+data Options = Options
+    { optPort :: Int
+    , optEnableLogging :: Bool
+    }
+    deriving (Show)
+
+-- | Parser for command line options
+optionsParser :: Parser Options
+optionsParser = Options
+    <$> option auto
+        ( long "port"
+       <> short 'p'
+       <> metavar "PORT"
+       <> Options.Applicative.value 8080
+       <> help "Port to run the HTTP server on (default: 8080)"
+        )
+    <*> switch
+        ( long "log"
+       <> short 'l'
+       <> help "Enable request/response logging"
+        )
+
+-- | Full parser with help
+opts :: ParserInfo Options
+opts = info (optionsParser <**> helper)
+    ( fullDesc
+   <> progDesc "Run an MCP server over HTTP transport"
+   <> header "mcp-http - HTTP MCP Server Example"
+    )
+
+-- | Example MCP Server implementation (copied from Main.hs)
 instance MCPServer MCPServerM where
     handleListResources _params = do
         return $ ListResourcesResult{resources = [], nextCursor = Nothing, _meta = Nothing}
 
     handleReadResource _params = do
-        let textContent = TextResourceContents{uri = "example://hello", text = "Hello from MCP Haskell server!", mimeType = Just "text/plain"}
+        let textContent = TextResourceContents{uri = "example://hello", text = "Hello from MCP Haskell HTTP server!", mimeType = Just "text/plain"}
         let content = TextResource textContent
         return $ ReadResourceResult{contents = [content], _meta = Nothing}
 
@@ -31,7 +83,7 @@ instance MCPServer MCPServerM where
         return $ ListPromptsResult{prompts = [], nextCursor = Nothing, _meta = Nothing}
 
     handleGetPrompt _params = do
-        let textContent = TextContent{text = "Hello prompt!", textType = "text", annotations = Nothing}
+        let textContent = TextContent{text = "Hello HTTP prompt!", textType = "text", annotations = Nothing}
         let content = TextContentType textContent
         let message = PromptMessage{role = User, content = content}
         return $ GetPromptResult{messages = [message], description = Nothing, _meta = Nothing}
@@ -40,7 +92,7 @@ instance MCPServer MCPServerM where
         let getCurrentDateTool =
                 Tool
                     { name = "getCurrentDate"
-                    , description = Just "Get the current date and time"
+                    , description = Just "Get the current date and time via HTTP"
                     , inputSchema = InputSchema "object" Nothing Nothing
                     , annotations = Nothing
                     }
@@ -50,7 +102,7 @@ instance MCPServer MCPServerM where
         case toolName of
             "getCurrentDate" -> do
                 currentTime <- liftIO getCurrentTime
-                let dateStr = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S UTC" currentTime
+                let dateStr = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S UTC (via HTTP)" currentTime
                 let textContent = TextContent{text = T.pack dateStr, textType = "text", annotations = Nothing}
                 let content = TextContentType textContent
                 return $ CallToolResult{content = [content], isError = Nothing, _meta = Nothing}
@@ -60,19 +112,23 @@ instance MCPServer MCPServerM where
                 return $ CallToolResult{content = [content], isError = Just True, _meta = Nothing}
 
     handleComplete _params = do
-        let completionResult = CompletionResult{values = [], total = Nothing, hasMore = Just True}
+        let completionResult = Protocol.CompletionResult{values = [], total = Nothing, hasMore = Just True}
         return $ CompleteResult{completion = completionResult, _meta = Nothing}
 
     handleSetLevel _params = do
-        liftIO $ putStrLn "Log level set"
+        liftIO $ putStrLn "Log level set via HTTP"
 
 main :: IO ()
 main = do
-    putStrLn "Starting MCP Haskell Server..."
+    Options{..} <- execParser opts
+    
+    putStrLn "Starting MCP Haskell HTTP Server..."
+    putStrLn $ "Port: " ++ show optPort
+    when optEnableLogging $ putStrLn "Request/Response logging: enabled"
 
     let serverInfo =
             Implementation
-                { name = "mcp-haskell-example"
+                { name = "mcp-haskell-http-example"
                 , version = "0.1.0"
                 }
 
@@ -101,12 +157,20 @@ main = do
                 }
 
     let config =
-            MCP.Server.StdIO.ServerConfig
-                { configInput = stdin
-                , configOutput = stdout
-                , configServerInfo = serverInfo
-                , configCapabilities = capabilities
+            HTTPServerConfig
+                { httpPort = optPort
+                , httpServerInfo = serverInfo
+                , httpCapabilities = capabilities
+                , httpEnableLogging = optEnableLogging
                 }
 
-    putStrLn "Server configured, starting message loop..."
-    MCP.Server.StdIO.runServer config
+    putStrLn $ "HTTP server configured, starting on port " ++ show optPort ++ "..."
+    putStrLn $ "MCP endpoint available at: POST http://localhost:" ++ show optPort ++ "/mcp"
+    putStrLn ""
+    putStrLn "Example test command:"
+    putStrLn $ "curl -X POST http://localhost:" ++ show optPort ++ "/mcp \\"
+    putStrLn "  -H \"Content-Type: application/json\" \\"
+    putStrLn "  -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}'"
+    putStrLn ""
+    
+    runServerHTTP config
