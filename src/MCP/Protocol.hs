@@ -91,7 +91,7 @@ module MCP.Protocol (
     CreateMessageResult (..),
     ListRootsResult (..),
     ElicitResult (..),
-    
+
     -- * Schema Types
     PrimitiveSchemaDefinition (..),
     StringSchema (..),
@@ -124,8 +124,8 @@ module MCP.Protocol (
 
 import Control.Applicative ((<|>))
 import Data.Aeson hiding (Object)
-import Data.Aeson.Types (Object)
 import Data.Aeson.TH
+import Data.Aeson.Types (Object)
 import Data.Map (Map)
 import Data.Text (Text)
 import GHC.Generics
@@ -589,9 +589,12 @@ $(deriveJSON defaultOptions{omitNothingFields = True} ''CompletionContext)
 
 -- | Parameters for a completion request
 data CompleteParams = CompleteParams
-    { ref :: Reference -- ^ Reference to prompt or resource template for completion
-    , argument :: CompletionArgument -- ^ The argument to get completions for
-    , context :: Maybe CompletionContext -- ^ Additional context for completion
+    { ref :: Reference
+    -- ^ Reference to prompt or resource template for completion
+    , argument :: CompletionArgument
+    -- ^ The argument to get completions for
+    , context :: Maybe CompletionContext
+    -- ^ Additional context for completion
     }
     deriving stock (Show, Eq, Generic)
 
@@ -820,20 +823,26 @@ data StringSchema = StringSchema
     deriving stock (Show, Eq, Generic)
 
 instance ToJSON StringSchema where
-    toJSON (StringSchema _ t d minL maxL f) = object $
-        [ "type" .= ("string" :: Text) ]
-        ++ maybe [] (\x -> ["title" .= x]) t
-        ++ maybe [] (\x -> ["description" .= x]) d
-        ++ maybe [] (\x -> ["minLength" .= x]) minL
-        ++ maybe [] (\x -> ["maxLength" .= x]) maxL
-        ++ maybe [] (\x -> ["format" .= x]) f
+    toJSON (StringSchema _ t d minL maxL f) =
+        object $
+            ["type" .= ("string" :: Text)]
+                ++ maybe [] (\x -> ["title" .= x]) t
+                ++ maybe [] (\x -> ["description" .= x]) d
+                ++ maybe [] (\x -> ["minLength" .= x]) minL
+                ++ maybe [] (\x -> ["maxLength" .= x]) maxL
+                ++ maybe [] (\x -> ["format" .= x]) f
 
 instance FromJSON StringSchema where
     parseJSON = withObject "StringSchema" $ \o -> do
         ty <- o .: "type"
         if ty == ("string" :: Text)
-            then StringSchema ty <$> o .:? "title" <*> o .:? "description" 
-                 <*> o .:? "minLength" <*> o .:? "maxLength" <*> o .:? "format"
+            then
+                StringSchema ty
+                    <$> o .:? "title"
+                    <*> o .:? "description"
+                    <*> o .:? "minLength"
+                    <*> o .:? "maxLength"
+                    <*> o .:? "format"
             else fail "Expected type 'string'"
 
 -- | Schema for number/integer fields
@@ -847,19 +856,24 @@ data NumberSchema = NumberSchema
     deriving stock (Show, Eq, Generic)
 
 instance ToJSON NumberSchema where
-    toJSON (NumberSchema ty t d minV maxV) = object $
-        [ "type" .= ty ]
-        ++ maybe [] (\x -> ["title" .= x]) t
-        ++ maybe [] (\x -> ["description" .= x]) d
-        ++ maybe [] (\x -> ["minimum" .= x]) minV
-        ++ maybe [] (\x -> ["maximum" .= x]) maxV
+    toJSON (NumberSchema ty t d minV maxV) =
+        object $
+            ["type" .= ty]
+                ++ maybe [] (\x -> ["title" .= x]) t
+                ++ maybe [] (\x -> ["description" .= x]) d
+                ++ maybe [] (\x -> ["minimum" .= x]) minV
+                ++ maybe [] (\x -> ["maximum" .= x]) maxV
 
 instance FromJSON NumberSchema where
     parseJSON = withObject "NumberSchema" $ \o -> do
         ty <- o .: "type"
         if ty `elem` (["number", "integer"] :: [Text])
-            then NumberSchema ty <$> o .:? "title" <*> o .:? "description" 
-                 <*> o .:? "minimum" <*> o .:? "maximum"
+            then
+                NumberSchema ty
+                    <$> o .:? "title"
+                    <*> o .:? "description"
+                    <*> o .:? "minimum"
+                    <*> o .:? "maximum"
             else fail "Expected type 'number' or 'integer'"
 
 -- | Schema for boolean fields
@@ -872,11 +886,12 @@ data BooleanSchema = BooleanSchema
     deriving stock (Show, Eq, Generic)
 
 instance ToJSON BooleanSchema where
-    toJSON (BooleanSchema _ t d def) = object $
-        [ "type" .= ("boolean" :: Text) ]
-        ++ maybe [] (\x -> ["title" .= x]) t
-        ++ maybe [] (\x -> ["description" .= x]) d
-        ++ maybe [] (\x -> ["default" .= x]) def
+    toJSON (BooleanSchema _ t d def) =
+        object $
+            ["type" .= ("boolean" :: Text)]
+                ++ maybe [] (\x -> ["title" .= x]) t
+                ++ maybe [] (\x -> ["description" .= x]) d
+                ++ maybe [] (\x -> ["default" .= x]) def
 
 instance FromJSON BooleanSchema where
     parseJSON = withObject "BooleanSchema" $ \o -> do
@@ -896,20 +911,25 @@ data EnumSchema = EnumSchema
     deriving stock (Show, Eq, Generic)
 
 instance ToJSON EnumSchema where
-    toJSON (EnumSchema _ t d e eNames) = object $
-        [ "type" .= ("string" :: Text)
-        , "enum" .= e
-        ]
-        ++ maybe [] (\x -> ["title" .= x]) t
-        ++ maybe [] (\x -> ["description" .= x]) d
-        ++ maybe [] (\x -> ["enumNames" .= x]) eNames
+    toJSON (EnumSchema _ t d e eNames) =
+        object $
+            [ "type" .= ("string" :: Text)
+            , "enum" .= e
+            ]
+                ++ maybe [] (\x -> ["title" .= x]) t
+                ++ maybe [] (\x -> ["description" .= x]) d
+                ++ maybe [] (\x -> ["enumNames" .= x]) eNames
 
 instance FromJSON EnumSchema where
     parseJSON = withObject "EnumSchema" $ \o -> do
         ty <- o .: "type"
         if ty == ("string" :: Text)
-            then EnumSchema ty <$> o .:? "title" <*> o .:? "description" 
-                 <*> o .: "enum" <*> o .:? "enumNames"
+            then
+                EnumSchema ty
+                    <$> o .:? "title"
+                    <*> o .:? "description"
+                    <*> o .: "enum"
+                    <*> o .:? "enumNames"
             else fail "Expected type 'string' with enum"
 
 -- | Primitive schema definition union type

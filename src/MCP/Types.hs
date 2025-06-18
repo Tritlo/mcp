@@ -30,7 +30,7 @@ Key features of the 2025-06-18 implementation:
 module MCP.Types (
     -- * Constants
     mcpProtocolVersion,
-    
+
     -- * Basic Types
     RequestId (..),
     Role (..),
@@ -90,7 +90,7 @@ module MCP.Types (
 
     -- * Base Types
     BaseMetadata (..),
-    
+
     -- * Implementation Info
     Implementation (..),
 
@@ -348,25 +348,33 @@ data ResourceLink = ResourceLink
     deriving stock (Show, Eq, Generic)
 
 instance ToJSON ResourceLink where
-    toJSON (ResourceLink _ u n t d m s a meta) = object $
-        [ "type" .= ("resource_link" :: Text)
-        , "uri" .= u
-        , "name" .= n
-        ]
-        ++ maybe [] (\x -> ["title" .= x]) t
-        ++ maybe [] (\x -> ["description" .= x]) d
-        ++ maybe [] (\x -> ["mimeType" .= x]) m
-        ++ maybe [] (\x -> ["size" .= x]) s
-        ++ maybe [] (\x -> ["annotations" .= x]) a
-        ++ maybe [] (\x -> ["_meta" .= x]) meta
+    toJSON (ResourceLink _ u n t d m s a meta) =
+        object $
+            [ "type" .= ("resource_link" :: Text)
+            , "uri" .= u
+            , "name" .= n
+            ]
+                ++ maybe [] (\x -> ["title" .= x]) t
+                ++ maybe [] (\x -> ["description" .= x]) d
+                ++ maybe [] (\x -> ["mimeType" .= x]) m
+                ++ maybe [] (\x -> ["size" .= x]) s
+                ++ maybe [] (\x -> ["annotations" .= x]) a
+                ++ maybe [] (\x -> ["_meta" .= x]) meta
 
 instance FromJSON ResourceLink where
     parseJSON = withObject "ResourceLink" $ \o -> do
         ty <- o .: "type"
         if ty == ("resource_link" :: Text)
-            then ResourceLink ty <$> o .: "uri" <*> o .: "name" <*> o .:? "title" 
-                 <*> o .:? "description" <*> o .:? "mimeType" <*> o .:? "size" 
-                 <*> o .:? "annotations" <*> o .:? "_meta"
+            then
+                ResourceLink ty
+                    <$> o .: "uri"
+                    <*> o .: "name"
+                    <*> o .:? "title"
+                    <*> o .:? "description"
+                    <*> o .:? "mimeType"
+                    <*> o .:? "size"
+                    <*> o .:? "annotations"
+                    <*> o .:? "_meta"
             else fail "Expected type 'resource_link'"
 
 -- | Content blocks that can be text, image, audio, embedded resource, or resource link
@@ -562,7 +570,7 @@ instance ToJSON PromptReference where
             [ "type" .= ("ref/prompt" :: Text)
             , "name" .= n
             ]
-            ++ maybe [] (\tit -> ["title" .= tit]) t
+                ++ maybe [] (\tit -> ["title" .= tit]) t
 
 instance FromJSON PromptReference where
     parseJSON = withObject "PromptReference" $ \o -> do
@@ -606,7 +614,7 @@ instance FromJSON IncludeContext where
         other -> fail $ "Unknown include context: " <> show other
 
 -- | Restricted content type for sampling messages (text, image, audio only)
-data SamplingContent 
+data SamplingContent
     = SamplingTextContent TextContent
     | SamplingImageContent ImageContent
     | SamplingAudioContent AudioContent
