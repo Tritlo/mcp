@@ -6,16 +6,17 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
--- |
--- Module      : MCP.Server
--- Description : MCP server core types and interface
--- Copyright   : (C) 2025 Matthias Pall Gissurarson
--- License     : MIT
--- Maintainer  : mpg@mpg.is
--- Stability   : experimental
--- Portability : GHC
---
--- This module provides the core types and interface for MCP server implementations.
+{- |
+Module      : MCP.Server
+Description : MCP server core types and interface
+Copyright   : (C) 2025 Matthias Pall Gissurarson
+License     : MIT
+Maintainer  : mpg@mpg.is
+Stability   : experimental
+Portability : GHC
+
+This module provides the core types and interface for MCP server implementations.
+-}
 module MCP.Server (
     -- * Server Interface
     MCPServer (..),
@@ -64,7 +65,6 @@ data ServerConfig = ServerConfig
     }
     deriving (Show)
 
-
 -- | The monad stack for MCP server operations
 type MCPServerM = ReaderT ServerConfig (StateT ServerState (ExceptT Text IO))
 
@@ -72,9 +72,10 @@ type MCPServerM = ReaderT ServerConfig (StateT ServerState (ExceptT Text IO))
 runMCPServer :: ServerConfig -> ServerState -> MCPServerM a -> IO (Either Text (a, ServerState))
 runMCPServer config state action = runExceptT $ runStateT (runReaderT action config) state
 
--- | Create the initial server state with the given capabilities
--- The server starts uninitialized and must receive an 'initialize' request
--- before it can handle other requests.
+{- | Create the initial server state with the given capabilities
+The server starts uninitialized and must receive an 'initialize' request
+before it can handle other requests.
+-}
 initialServerState :: ServerCapabilities -> ServerState
 initialServerState caps =
     ServerState
@@ -117,4 +118,3 @@ sendNotification handle method params = liftIO $ do
     let notification = JSONRPCNotification "2.0" method (Just (toJSON params))
     LBSC.hPutStrLn handle (encode notification)
     hFlush handle
-

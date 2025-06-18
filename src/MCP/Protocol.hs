@@ -5,18 +5,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
--- |
--- Module      : MCP.Protocol
--- Description : JSON-RPC protocol implementation for MCP
--- Copyright   : (C) 2025 Matthias Pall Gissurarson
--- License     : MIT
--- Maintainer  : mpg@mpg.is
--- Stability   : experimental
--- Portability : GHC
---
--- This module implements the JSON-RPC 2.0 protocol layer for MCP,
--- including request/response handling, message parsing and encoding,
--- and protocol-level error handling.
+{- |
+Module      : MCP.Protocol
+Description : JSON-RPC protocol implementation for MCP
+Copyright   : (C) 2025 Matthias Pall Gissurarson
+License     : MIT
+Maintainer  : mpg@mpg.is
+Stability   : experimental
+Portability : GHC
+
+This module implements the JSON-RPC 2.0 protocol layer for MCP,
+including request/response handling, message parsing and encoding,
+and protocol-level error handling.
+-}
 module MCP.Protocol (
     -- * JSON-RPC Types
     JSONRPCRequest (..),

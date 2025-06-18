@@ -6,16 +6,17 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
--- |
--- Module      : MCP.Server.StdIO
--- Description : MCP server implementation for stdin/stdout communication
--- Copyright   : (C) 2025 Matthias Pall Gissurarson
--- License     : MIT
--- Maintainer  : mpg@mpg.is
--- Stability   : experimental
--- Portability : GHC
---
--- This module provides MCP server implementation for stdin/stdout streams.
+{- |
+Module      : MCP.Server.StdIO
+Description : MCP server implementation for stdin/stdout communication
+Copyright   : (C) 2025 Matthias Pall Gissurarson
+License     : MIT
+Maintainer  : mpg@mpg.is
+Stability   : experimental
+Portability : GHC
+
+This module provides MCP server implementation for stdin/stdout streams.
+-}
 module MCP.Server.StdIO (
     -- * Server Runner
     runServer,
@@ -34,9 +35,8 @@ import Data.Text qualified as T
 import System.IO.Error (isEOFError)
 
 import MCP.Protocol
-import MCP.Server (MCPServer(..), MCPServerM, ServerState(..), ServerConfig(..), runMCPServer, initialServerState, sendResponse, sendError)
+import MCP.Server (MCPServer (..), MCPServerM, ServerConfig (..), ServerState (..), initialServerState, runMCPServer, sendError, sendResponse)
 import MCP.Types
-
 
 -- | Handle an incoming JSON-RPC message
 handleMessage :: (MCPServer MCPServerM) => BSC.ByteString -> MCPServerM (Maybe ())
