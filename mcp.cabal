@@ -20,7 +20,7 @@ name:               mcp
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:            0.2.0.0
+version:            0.3.0.0
 
 -- A short (one-line) description of the package.
 synopsis:           A Haskell implementation of the Model Context Protocol (MCP)
@@ -29,9 +29,10 @@ synopsis:           A Haskell implementation of the Model Context Protocol (MCP)
 description:        
     This library provides a complete implementation of the Model Context Protocol (MCP)
     for Haskell. MCP is a protocol that enables seamless communication between AI models
-    and external tools, resources, and services. This implementation includes support for
-    resources, tools, prompts, and all standard MCP message types. It provides both a
-    server framework and type definitions for building MCP-compliant applications.
+    and external tools, resources, and services. This implementation supports the latest
+    MCP protocol version (2025-06-18) with full compatibility for resources, tools, 
+    prompts, and all standard MCP message types. It provides both a server framework 
+    and type definitions for building MCP-compliant applications.
     .
     Features dual transport support:
     .
@@ -64,6 +65,7 @@ extra-doc-files:    CHANGELOG.md
 
 -- Extra source files to be distributed with the package, such as examples, or a tutorial module.
 extra-source-files:
+    schema.ts
     examples/README.md
     examples/http-server.hs
     examples/claude-desktop-config.json
@@ -164,6 +166,7 @@ executable mcp
 executable mcp-http
     -- Import common warning flags.
     import:           warnings
+    ghc-options:      -threaded
 
     -- .hs or .lhs file containing the Main module.
     main-is:          http-server.hs
@@ -194,6 +197,7 @@ executable mcp-http
 test-suite mcp-test
     -- Import common warning flags.
     import:           warnings
+    ghc-options: -threaded
 
     -- Base language which the package is written in.
     default-language: GHC2021

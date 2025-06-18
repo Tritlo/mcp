@@ -20,7 +20,7 @@ instance MCPServer MCPServerM where
         return $ ListResourcesResult{resources = [], nextCursor = Nothing, _meta = Nothing}
 
     handleReadResource _params = do
-        let textContent = TextResourceContents{uri = "example://hello", text = "Hello from MCP Haskell server!", mimeType = Just "text/plain"}
+        let textContent = TextResourceContents{uri = "example://hello", text = "Hello from MCP Haskell server!", mimeType = Just "text/plain", _meta = Nothing}
         let content = TextResource textContent
         return $ ReadResourceResult{contents = [content], _meta = Nothing}
 
@@ -31,7 +31,7 @@ instance MCPServer MCPServerM where
         return $ ListPromptsResult{prompts = [], nextCursor = Nothing, _meta = Nothing}
 
     handleGetPrompt _params = do
-        let textContent = TextContent{text = "Hello prompt!", textType = "text", annotations = Nothing}
+        let textContent = TextContent{text = "Hello prompt!", textType = "text", annotations = Nothing, _meta = Nothing}
         let content = TextContentType textContent
         let message = PromptMessage{role = User, content = content}
         return $ GetPromptResult{messages = [message], description = Nothing, _meta = Nothing}
@@ -40,9 +40,12 @@ instance MCPServer MCPServerM where
         let getCurrentDateTool =
                 Tool
                     { name = "getCurrentDate"
+                    , title = Nothing
                     , description = Just "Get the current date and time"
                     , inputSchema = InputSchema "object" Nothing Nothing
+                    , outputSchema = Nothing
                     , annotations = Nothing
+                    , _meta = Nothing
                     }
         return $ ListToolsResult{tools = [getCurrentDateTool], nextCursor = Nothing, _meta = Nothing}
 
@@ -51,13 +54,13 @@ instance MCPServer MCPServerM where
             "getCurrentDate" -> do
                 currentTime <- liftIO getCurrentTime
                 let dateStr = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S UTC" currentTime
-                let textContent = TextContent{text = T.pack dateStr, textType = "text", annotations = Nothing}
+                let textContent = TextContent{text = T.pack dateStr, textType = "text", annotations = Nothing, _meta = Nothing}
                 let content = TextContentType textContent
-                return $ CallToolResult{content = [content], isError = Nothing, _meta = Nothing}
+                return $ CallToolResult{content = [content], structuredContent = Nothing, isError = Nothing, _meta = Nothing}
             _ -> do
-                let textContent = TextContent{text = "Tool not found", textType = "text", annotations = Nothing}
+                let textContent = TextContent{text = "Tool not found", textType = "text", annotations = Nothing, _meta = Nothing}
                 let content = TextContentType textContent
-                return $ CallToolResult{content = [content], isError = Just True, _meta = Nothing}
+                return $ CallToolResult{content = [content], structuredContent = Nothing, isError = Just True, _meta = Nothing}
 
     handleComplete _params = do
         let completionResult = CompletionResult{values = [], total = Nothing, hasMore = Just True}
@@ -73,6 +76,7 @@ main = do
     let serverInfo =
             Implementation
                 { name = "mcp-haskell-example"
+                , title = Nothing
                 , version = "0.1.0"
                 }
 

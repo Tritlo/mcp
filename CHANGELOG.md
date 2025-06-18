@@ -1,5 +1,38 @@
 # Revision history for mcp
 
+## 0.3.0.0 -- 2025-06-18
+
+* **Protocol Update**: Full support for MCP protocol version 2025-06-18 with complete schema compliance
+* **Major Type System Updates**:
+  - Add BaseMetadata interface with name/title distinction for consistent naming across all types
+  - Rename Content to ContentBlock for consistency with official schema
+  - Add ResourceLink content type for referencing resources in prompts and tool results
+  - Create restricted SamplingContent type (text, image, audio only) for SamplingMessage
+  - Fix ResourceTemplateReference to use correct type "ref/resource" with uri field
+* **Enhanced Features**:
+  - Add tool output schema support (outputSchema field in Tool type)
+  - Add elicitation system for interactive user input forms with primitive schema validation
+  - Add enhanced metadata with lastModified timestamps and _meta fields throughout
+  - Add context parameter to completion requests for better autocompletion
+  - Add structured content support for tool results (structuredContent field)
+  - Add instructions field to InitializeResult for server usage hints
+* **Schema Compliance**:
+  - Update all types to include optional _meta fields where specified in schema
+  - Fix Reference union to include ResourceTemplateReference instead of ResourceReference
+  - Ensure CreateMessageResult properly extends SamplingMessage with restricted content
+  - Add ResourceTemplateReference type with correct schema-compliant structure
+  - Complete type exports for all new schema elements
+* **Documentation and Examples**:
+  - Add comprehensive documentation for CompleteParams with field descriptions
+  - Update all example code to include new required fields (_meta, title, outputSchema, etc.)
+  - Update README with latest protocol version information
+  - Enhanced Cabal description highlighting 2025-06-18 protocol support
+* **BREAKING CHANGE**: Various type signatures updated to match new protocol
+  - Content renamed to ContentBlock (legacy alias provided for backward compatibility)
+  - SamplingMessage content restricted to TextContent | ImageContent | AudioContent
+  - ResourceTemplateReference structure changed to match schema
+  - Reference union now uses ResourceTemplateReference instead of ResourceReference
+
 ## 0.2.0.0 -- 2025-01-18
 
 * Add HTTP transport support following MCP specification

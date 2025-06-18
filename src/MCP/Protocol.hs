@@ -10,16 +10,24 @@
 
 {- |
 Module      : MCP.Protocol
-Description : JSON-RPC protocol implementation for MCP
+Description : JSON-RPC protocol implementation for MCP version 2025-06-18
 Copyright   : (C) 2025 Matthias Pall Gissurarson
 License     : MIT
 Maintainer  : mpg@mpg.is
 Stability   : experimental
 Portability : GHC
 
-This module implements the JSON-RPC 2.0 protocol layer for MCP,
-including request/response handling, message parsing and encoding,
-and protocol-level error handling.
+This module implements the JSON-RPC 2.0 protocol layer for MCP version 2025-06-18,
+including request/response handling, message parsing and encoding, and protocol-level
+error handling. Supports all MCP operations including initialization, resources,
+tools, prompts, completion, sampling, elicitation, and notifications.
+
+New in 2025-06-18:
+- Enhanced completion requests with context parameters
+- Elicitation system for interactive user input
+- Sampling message restrictions for LLM compatibility
+- Comprehensive _meta field support throughout protocol messages
+- Resource template references with correct schema compliance
 -}
 module MCP.Protocol (
     -- * JSON-RPC Types
@@ -29,6 +37,7 @@ module MCP.Protocol (
     JSONRPCNotification (..),
     JSONRPCMessage (..),
     JSONRPCErrorInfo (..),
+    CompletionContext (..),
 
     -- * Client Request Types
     InitializeRequest (..),
@@ -65,6 +74,8 @@ module MCP.Protocol (
     CreateMessageParams (..),
     ListRootsRequest (..),
     ListRootsParams (..),
+    ElicitRequest (..),
+    ElicitParams (..),
 
     -- * Response Types
     InitializeResult (..),
@@ -79,6 +90,14 @@ module MCP.Protocol (
     CompletionResult (..),
     CreateMessageResult (..),
     ListRootsResult (..),
+    ElicitResult (..),
+    
+    -- * Schema Types
+    PrimitiveSchemaDefinition (..),
+    StringSchema (..),
+    NumberSchema (..),
+    BooleanSchema (..),
+    EnumSchema (..),
 
     -- * Notification Types
     CancelledNotification (..),
@@ -104,7 +123,8 @@ module MCP.Protocol (
 ) where
 
 import Control.Applicative ((<|>))
-import Data.Aeson
+import Data.Aeson hiding (Object)
+import Data.Aeson.Types (Object)
 import Data.Aeson.TH
 import Data.Map (Map)
 import Data.Text (Text)
@@ -544,29 +564,38 @@ data CompletionArgument = CompletionArgument
 
 $(deriveJSON defaultOptions ''CompletionArgument)
 
--- | Reference (prompt or resource)
+-- | Reference (prompt or resource template)
 data Reference
     = PromptRef PromptReference
-    | ResourceRef ResourceReference
+    | ResourceTemplateRef ResourceTemplateReference
     deriving stock (Show, Eq, Generic)
 
 instance ToJSON Reference where
     toJSON (PromptRef p) = toJSON p
-    toJSON (ResourceRef r) = toJSON r
+    toJSON (ResourceTemplateRef r) = toJSON r
 
 instance FromJSON Reference where
     parseJSON v =
         (PromptRef <$> parseJSON v)
-            <|> (ResourceRef <$> parseJSON v)
+            <|> (ResourceTemplateRef <$> parseJSON v)
 
--- | Complete request parameters
-data CompleteParams = CompleteParams
-    { ref :: Reference
-    , argument :: CompletionArgument
+-- | Context for completion requests
+data CompletionContext = CompletionContext
+    { arguments :: Maybe (Map Text Text)
     }
     deriving stock (Show, Eq, Generic)
 
-$(deriveJSON defaultOptions ''CompleteParams)
+$(deriveJSON defaultOptions{omitNothingFields = True} ''CompletionContext)
+
+-- | Parameters for a completion request
+data CompleteParams = CompleteParams
+    { ref :: Reference -- ^ Reference to prompt or resource template for completion
+    , argument :: CompletionArgument -- ^ The argument to get completions for
+    , context :: Maybe CompletionContext -- ^ Additional context for completion
+    }
+    deriving stock (Show, Eq, Generic)
+
+$(deriveJSON defaultOptions{omitNothingFields = True} ''CompleteParams)
 
 -- | Complete request
 data CompleteRequest = CompleteRequest
@@ -729,6 +758,7 @@ $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case
 -- | Call tool result
 data CallToolResult = CallToolResult
     { content :: [Content]
+    , structuredContent :: Maybe Value
     , isError :: Maybe Bool
     , _meta :: Maybe Metadata
     }
@@ -755,10 +785,10 @@ data CompleteResult = CompleteResult
 
 $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''CompleteResult)
 
--- | Create message result
+-- | Create message result (extends SamplingMessage)
 data CreateMessageResult = CreateMessageResult
     { role :: Role
-    , content :: Content
+    , content :: SamplingContent
     , model :: Text
     , stopReason :: Maybe Text
     , _meta :: Maybe Metadata
@@ -775,6 +805,173 @@ data ListRootsResult = ListRootsResult
     deriving stock (Show, Eq, Generic)
 
 $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''ListRootsResult)
+
+-- * Elicitation Types
+
+-- | Schema for string fields
+data StringSchema = StringSchema
+    { schemaType :: Text -- Always "string"
+    , title :: Maybe Text
+    , description :: Maybe Text
+    , minLength :: Maybe Int
+    , maxLength :: Maybe Int
+    , format :: Maybe Text -- "email", "uri", "date", "date-time"
+    }
+    deriving stock (Show, Eq, Generic)
+
+instance ToJSON StringSchema where
+    toJSON (StringSchema _ t d minL maxL f) = object $
+        [ "type" .= ("string" :: Text) ]
+        ++ maybe [] (\x -> ["title" .= x]) t
+        ++ maybe [] (\x -> ["description" .= x]) d
+        ++ maybe [] (\x -> ["minLength" .= x]) minL
+        ++ maybe [] (\x -> ["maxLength" .= x]) maxL
+        ++ maybe [] (\x -> ["format" .= x]) f
+
+instance FromJSON StringSchema where
+    parseJSON = withObject "StringSchema" $ \o -> do
+        ty <- o .: "type"
+        if ty == ("string" :: Text)
+            then StringSchema ty <$> o .:? "title" <*> o .:? "description" 
+                 <*> o .:? "minLength" <*> o .:? "maxLength" <*> o .:? "format"
+            else fail "Expected type 'string'"
+
+-- | Schema for number/integer fields
+data NumberSchema = NumberSchema
+    { schemaType :: Text -- "number" or "integer"
+    , title :: Maybe Text
+    , description :: Maybe Text
+    , minimum :: Maybe Double
+    , maximum :: Maybe Double
+    }
+    deriving stock (Show, Eq, Generic)
+
+instance ToJSON NumberSchema where
+    toJSON (NumberSchema ty t d minV maxV) = object $
+        [ "type" .= ty ]
+        ++ maybe [] (\x -> ["title" .= x]) t
+        ++ maybe [] (\x -> ["description" .= x]) d
+        ++ maybe [] (\x -> ["minimum" .= x]) minV
+        ++ maybe [] (\x -> ["maximum" .= x]) maxV
+
+instance FromJSON NumberSchema where
+    parseJSON = withObject "NumberSchema" $ \o -> do
+        ty <- o .: "type"
+        if ty `elem` (["number", "integer"] :: [Text])
+            then NumberSchema ty <$> o .:? "title" <*> o .:? "description" 
+                 <*> o .:? "minimum" <*> o .:? "maximum"
+            else fail "Expected type 'number' or 'integer'"
+
+-- | Schema for boolean fields
+data BooleanSchema = BooleanSchema
+    { schemaType :: Text -- Always "boolean"
+    , title :: Maybe Text
+    , description :: Maybe Text
+    , defaultValue :: Maybe Bool
+    }
+    deriving stock (Show, Eq, Generic)
+
+instance ToJSON BooleanSchema where
+    toJSON (BooleanSchema _ t d def) = object $
+        [ "type" .= ("boolean" :: Text) ]
+        ++ maybe [] (\x -> ["title" .= x]) t
+        ++ maybe [] (\x -> ["description" .= x]) d
+        ++ maybe [] (\x -> ["default" .= x]) def
+
+instance FromJSON BooleanSchema where
+    parseJSON = withObject "BooleanSchema" $ \o -> do
+        ty <- o .: "type"
+        if ty == ("boolean" :: Text)
+            then BooleanSchema ty <$> o .:? "title" <*> o .:? "description" <*> o .:? "default"
+            else fail "Expected type 'boolean'"
+
+-- | Schema for enum fields
+data EnumSchema = EnumSchema
+    { schemaType :: Text -- Always "string"
+    , title :: Maybe Text
+    , description :: Maybe Text
+    , enum :: [Text]
+    , enumNames :: Maybe [Text] -- Display names for enum values
+    }
+    deriving stock (Show, Eq, Generic)
+
+instance ToJSON EnumSchema where
+    toJSON (EnumSchema _ t d e eNames) = object $
+        [ "type" .= ("string" :: Text)
+        , "enum" .= e
+        ]
+        ++ maybe [] (\x -> ["title" .= x]) t
+        ++ maybe [] (\x -> ["description" .= x]) d
+        ++ maybe [] (\x -> ["enumNames" .= x]) eNames
+
+instance FromJSON EnumSchema where
+    parseJSON = withObject "EnumSchema" $ \o -> do
+        ty <- o .: "type"
+        if ty == ("string" :: Text)
+            then EnumSchema ty <$> o .:? "title" <*> o .:? "description" 
+                 <*> o .: "enum" <*> o .:? "enumNames"
+            else fail "Expected type 'string' with enum"
+
+-- | Primitive schema definition union type
+data PrimitiveSchemaDefinition
+    = StringSchemaDef StringSchema
+    | NumberSchemaDef NumberSchema
+    | BooleanSchemaDef BooleanSchema
+    | EnumSchemaDef EnumSchema
+    deriving stock (Show, Eq, Generic)
+
+instance ToJSON PrimitiveSchemaDefinition where
+    toJSON (StringSchemaDef s) = toJSON s
+    toJSON (NumberSchemaDef s) = toJSON s
+    toJSON (BooleanSchemaDef s) = toJSON s
+    toJSON (EnumSchemaDef s) = toJSON s
+
+instance FromJSON PrimitiveSchemaDefinition where
+    parseJSON v =
+        (EnumSchemaDef <$> parseJSON v) -- Try enum first since it's also a string type
+            <|> (StringSchemaDef <$> parseJSON v)
+            <|> (NumberSchemaDef <$> parseJSON v)
+            <|> (BooleanSchemaDef <$> parseJSON v)
+
+-- | Elicit request parameters
+data ElicitParams = ElicitParams
+    { message :: Text
+    , requestedSchema :: Object -- Restricted to top-level properties only
+    }
+    deriving stock (Show, Eq, Generic)
+
+$(deriveJSON defaultOptions ''ElicitParams)
+
+-- | Elicit request
+data ElicitRequest = ElicitRequest
+    { method :: Text -- Always "elicitation/create"
+    , params :: ElicitParams
+    }
+    deriving stock (Show, Eq, Generic)
+
+instance ToJSON ElicitRequest where
+    toJSON (ElicitRequest _ p) =
+        object
+            [ "method" .= ("elicitation/create" :: Text)
+            , "params" .= p
+            ]
+
+instance FromJSON ElicitRequest where
+    parseJSON = withObject "ElicitRequest" $ \o -> do
+        m <- o .: "method"
+        if m == ("elicitation/create" :: Text)
+            then ElicitRequest m <$> o .: "params"
+            else fail "Expected method 'elicitation/create'"
+
+-- | Elicit result
+data ElicitResult = ElicitResult
+    { action :: Text -- "accept", "decline", or "cancel"
+    , content :: Maybe Value -- Present when action is "accept"
+    , _meta :: Maybe Metadata
+    }
+    deriving stock (Show, Eq, Generic)
+
+$(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''ElicitResult)
 
 -- * Notification Types
 
@@ -1067,18 +1264,21 @@ data ServerRequest
     = PingServerReq PingRequest
     | CreateMessageReq CreateMessageRequest
     | ListRootsReq ListRootsRequest
+    | ElicitReq ElicitRequest
     deriving stock (Show, Eq, Generic)
 
 instance ToJSON ServerRequest where
     toJSON (PingServerReq r) = toJSON r
     toJSON (CreateMessageReq r) = toJSON r
     toJSON (ListRootsReq r) = toJSON r
+    toJSON (ElicitReq r) = toJSON r
 
 instance FromJSON ServerRequest where
     parseJSON v =
         (PingServerReq <$> parseJSON v)
             <|> (CreateMessageReq <$> parseJSON v)
             <|> (ListRootsReq <$> parseJSON v)
+            <|> (ElicitReq <$> parseJSON v)
 
 -- | Any client notification
 data ClientNotification

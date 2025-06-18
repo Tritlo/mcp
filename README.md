@@ -8,6 +8,7 @@ This project provides a type-safe, comprehensive implementation of the Model Con
 
 ## Features
 
+- **Latest Protocol Support**: Implements MCP protocol version 2025-06-18 with full compatibility
 - **Complete MCP Protocol Implementation**: All MCP message types, requests, responses, and notifications
 - **Type-Safe Design**: Full Haskell type system integration with automatic JSON serialization
 - **Multiple Transport Options**: Both StdIO and HTTP transport support
@@ -92,7 +93,7 @@ main = do
         , httpEnableLogging = False
         , httpOAuthConfig = Nothing  -- No OAuth
         , httpJWK = Nothing  -- Auto-generated
-        , httpProtocolVersion = "2024-11-05"  -- MCP protocol version
+        , httpProtocolVersion = "2025-06-18"  -- MCP protocol version
         }
   runServerHTTP config
 ```
@@ -236,17 +237,29 @@ runHTTP = do
 
 ## MCP Protocol Support
 
-This implementation supports the complete MCP protocol specification:
+This implementation provides complete support for MCP protocol version **2025-06-18** with full schema compliance:
 
 ### ✅ Implemented Features
 
-- **Initialization**: Protocol version negotiation and capability exchange
-- **Resources**: Expose data and content that can be read by LLMs
-- **Tools**: Functions that LLMs can execute
-- **Prompts**: Pre-written prompt templates with arguments
-- **Completion**: Auto-completion for resource URIs, prompt arguments, etc.
-- **Logging**: Configurable logging levels
-- **Notifications**: Bidirectional event notifications
+- **Initialization**: Protocol version negotiation and capability exchange with server instructions
+- **Resources**: Expose data and content that can be read by LLMs with enhanced metadata
+- **Resource Links**: Reference resources in prompts and tool results without embedding content
+- **Tools**: Functions that LLMs can execute with input/output schema validation
+- **Prompts**: Pre-written prompt templates with arguments and rich content blocks
+- **Completion**: Auto-completion for resource URIs, prompt arguments, etc. with context support
+- **Sampling**: LLM sampling requests with model preferences and content restrictions
+- **Elicitation**: Interactive user input forms with primitive schema validation
+- **Logging**: Configurable logging levels with structured data
+- **Notifications**: Bidirectional event notifications for real-time updates
+
+### 🆕 New in 2025-06-18
+
+- **Enhanced Content System**: ContentBlock type supporting text, image, audio, embedded resources, and resource links
+- **Schema Validation**: Tool input/output schemas and elicitation form schemas
+- **Metadata Fields**: Comprehensive _meta field support with lastModified timestamps
+- **Base Metadata**: Consistent name/title distinction across all types
+- **Sampling Restrictions**: SamplingMessage limited to text, image, and audio content only
+- **Context-Aware Completions**: Additional context parameters for better autocompletion
 
 ### Core Operations
 
@@ -255,13 +268,19 @@ This implementation supports the complete MCP protocol specification:
 | `initialize` | Start session and negotiate capabilities | ✅ |
 | `ping` | Health check | ✅ |
 | `resources/list` | List available resources | ✅ |
+| `resources/templates/list` | List available resource templates | ✅ |
 | `resources/read` | Read resource contents | ✅ |
+| `resources/subscribe` | Subscribe to resource updates | ✅ |
+| `resources/unsubscribe` | Unsubscribe from resource updates | ✅ |
 | `prompts/list` | List available prompts | ✅ |
 | `prompts/get` | Get prompt with arguments | ✅ |
 | `tools/list` | List available tools | ✅ |
 | `tools/call` | Execute a tool | ✅ |
-| `completion/complete` | Auto-completion | ✅ |
+| `completion/complete` | Auto-completion with context | ✅ |
 | `logging/setLevel` | Set logging level | ✅ |
+| `sampling/createMessage` | Request LLM sampling | ✅ |
+| `roots/list` | List client root directories | ✅ |
+| `elicitation/create` | Request user input via forms | ✅ |
 
 ## Project Structure
 
@@ -355,17 +374,23 @@ The implementation leverages Haskell's type system to ensure protocol compliance
 
 ### Content Types
 
-MCP supports multiple content types with proper type wrappers:
+MCP 2025-06-18 supports rich content blocks with proper type wrappers:
 
 ```haskell
 -- Text content
-TextContentType $ TextContent "Hello world!"
+TextContentType $ TextContent { textType = "text", text = "Hello world!", annotations = Nothing, _meta = Nothing }
 
 -- Image content  
-ImageContentType $ ImageContent "data:image/png;base64,..." "image/png"
+ImageContentType $ ImageContent { imageType = "image", data' = "data:image/png;base64,iVBOR...", mimeType = "image/png", annotations = Nothing, _meta = Nothing }
 
--- Resource content
-TextResource $ TextResourceContents "file:///example.txt" "content" Nothing
+-- Resource link (new in 2025-06-18)
+ResourceLinkType $ ResourceLink { resourceLinkType = "resource_link", uri = "file:///example.txt", name = "example", title = Just "Example File", description = Just "Sample text file", mimeType = Just "text/plain", size = Just 1024, annotations = Nothing, _meta = Nothing }
+
+-- Embedded resource content
+EmbeddedResourceType $ EmbeddedResource { resourceType = "resource", resource = TextResource $ TextResourceContents { uri = "file:///example.txt", text = "content", mimeType = Just "text/plain", _meta = Nothing }, annotations = Nothing, _meta = Nothing }
+
+-- Sampling content (restricted for LLM APIs)
+SamplingTextContent $ TextContent { textType = "text", text = "Hello LLM!", annotations = Nothing, _meta = Nothing }
 ```
 
 ### Error Handling
@@ -379,15 +404,17 @@ The server includes comprehensive error handling:
 
 ## Contributing
 
-This is the first known implementation of MCP for Haskell. Contributions are welcome!
+This is the first known implementation of MCP for Haskell, now fully compliant with the latest MCP protocol version 2025-06-18. Contributions are welcome!
 
 Areas for improvement:
 - Server-Sent Events (SSE) support for HTTP transport
 - WebSocket transport implementation
-- More comprehensive example servers
-- Performance optimizations
-- Enhanced error messages
-- Documentation and tutorials
+- More comprehensive example servers demonstrating new features (elicitation, resource links, etc.)
+- Performance optimizations for large-scale deployments
+- Enhanced error messages with better debugging information
+- Additional documentation and tutorials covering new 2025-06-18 features
+- Integration examples with popular Haskell web frameworks
+- Benchmarking and profiling tools
 
 ## License
 

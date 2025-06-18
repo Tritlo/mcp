@@ -30,20 +30,23 @@ This is an implementation of the Model Context Protocol (MCP) for Haskell. The p
 ### Application:
 - **app/Main.hs** - Example MCP server implementation (StdIO mode)
 - **test/Main.hs** - Test suite entry point (currently a placeholder)
-- **schema.json** - Contains the complete MCP protocol JSON schema definitions
+- **schema.ts** - Contains the complete MCP protocol TypeScript schema definitions (2025-06-18)
 
 The project uses GHC2021 language extensions and targets base ^>=4.18.2.1.
 
 ## MCP Implementation Notes
 
-The schema.json file contains the full MCP protocol specification including:
+The schema.ts file contains the full MCP protocol specification (version 2025-06-18) including:
 - Client/Server request and response types
 - Notification types for both directions
 - Resource, Tool, and Prompt management
 - JSON-RPC message formats
 - Capability negotiation structures
+- Enhanced content blocks and metadata support
+- Elicitation system for user input
+- OAuth 2.1 authorization framework
 
-When implementing MCP functionality, refer to the schema.json for the exact message formats and type definitions required by the protocol.
+When implementing MCP functionality, refer to the schema.ts for the exact message formats and type definitions required by the protocol.
 
 ## Transport Options
 
@@ -110,7 +113,7 @@ When implementing OAuth features or modifying the authentication flow:
 
 **HTTPServerConfig** now includes:
 - `httpBaseUrl`: Base URL for OAuth endpoints (e.g., "https://api.example.com")
-- `httpProtocolVersion`: MCP protocol version (default "2024-11-05")
+- `httpProtocolVersion`: MCP protocol version (default "2025-06-18")
 
 **OAuthConfig** includes comprehensive settings:
 - Timing: `authCodeExpirySeconds`, `accessTokenExpirySeconds`

@@ -235,7 +235,7 @@ handleInitialize reqId params = do
 
     let result =
             InitializeResult
-                { protocolVersion = "2024-11-05"
+                { protocolVersion = mcpProtocolVersion
                 , capabilities = serverCapabilities state
                 , serverInfo = configServerInfo config
                 , instructions = Nothing
