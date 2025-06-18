@@ -2,6 +2,8 @@
 
 A complete implementation of the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) for Haskell.
 
+Available on [Hackage](https://hackage.haskell.org/package/mcp)
+
 ## Overview
 
 This project provides a type-safe, comprehensive implementation of the Model Context Protocol in Haskell. MCP is an open protocol that standardizes how applications provide context to Large Language Models (LLMs), enabling AI models to securely connect to data sources and tools.
