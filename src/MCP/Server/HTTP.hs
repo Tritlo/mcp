@@ -37,7 +37,6 @@ import Crypto.JOSE (JWK)
 import Data.Aeson (encode, fromJSON, object, toJSON, (.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as LBS
-import Data.ByteString.Lazy.Char8 qualified as LBSC
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
@@ -120,7 +119,7 @@ instance Aeson.FromJSON ClientRegistrationRequest where
 -- | Client registration response
 data ClientRegistrationResponse = ClientRegistrationResponse
     { client_id :: Text
-    , client_secret :: Maybe Text
+    , client_secret :: Text -- Empty string for public clients
     , client_name :: Text
     , redirect_uris :: [Text]
     , grant_types :: [Text]
@@ -262,8 +261,8 @@ handleHTTPRequest httpConfig stateVar _mAuthUser requestValue = do
                     -- Process notifications (no response expected)
                     _ <- liftIO $ processHTTPNotification httpConfig stateVar notif
                     return $ object [] -- Empty response for notifications
-                _ -> throwError err400{errBody = "Invalid JSON-RPC message type"}
-        Aeson.Error e -> throwError err400{errBody = LBSC.pack $ "Invalid JSON-RPC message: " ++ e}
+                _ -> throwError err400{errBody = encode $ object ["error" .= ("Invalid JSON-RPC message type" :: Text)]}
+        Aeson.Error e -> throwError err400{errBody = encode $ object ["error" .= ("Invalid JSON-RPC message" :: Text), "error_description" .= T.pack e]}
 
 -- | Process an HTTP MCP notification
 processHTTPNotification :: (MCPServer MCPServerM) => HTTPServerConfig -> TVar ServerState -> JSONRPCNotification -> IO ()
@@ -551,7 +550,7 @@ handleRegister config oauthStateVar (ClientRegistrationRequest reqName reqRedire
     return
         ClientRegistrationResponse
             { client_id = clientId
-            , client_secret = maybe (Just "") publicClientSecret (httpOAuthConfig config)
+            , client_secret = "" -- Empty string for public clients
             , client_name = reqName
             , redirect_uris = reqRedirects
             , grant_types = reqGrants
@@ -564,10 +563,10 @@ handleAuthorize :: HTTPServerConfig -> TVar OAuthState -> Text -> Text -> Text -
 handleAuthorize config oauthStateVar responseType clientId redirectUri codeChallenge codeChallengeMethod mScope mState = do
     -- Validate parameters according to MCP spec
     when (responseType /= "code") $
-        throwError err400{errBody = "Only 'code' response type is supported"}
+        throwError err400{errBody = encode $ object ["error" .= ("unsupported_response_type" :: Text), "error_description" .= ("Only 'code' response type is supported" :: Text)]}
 
     when (codeChallengeMethod /= "S256") $
-        throwError err400{errBody = "Only 'S256' code challenge method is supported"}
+        throwError err400{errBody = encode $ object ["error" .= ("invalid_request" :: Text), "error_description" .= ("Only 'S256' code challenge method is supported" :: Text)]}
 
     -- Generate authorization code
     code <- liftIO $ generateAuthCodeWithConfig config
@@ -665,32 +664,26 @@ handleAuthCodeGrant jwtSettings config oauthStateVar params = do
                 , userName = Just userName
                 }
 
-    -- Generate JWT access token
-    accessTokenResult <- liftIO $ makeJWT user jwtSettings Nothing
-    case accessTokenResult of
-        Left _err -> throwError err500{errBody = encode $ object ["error" .= ("Token generation failed" :: Text)]}
-        Right accessToken -> do
-            -- Generate refresh token
-            refreshToken <- liftIO $ generateRefreshTokenWithConfig config
+    -- Generate tokens
+    accessTokenText <- generateJWTAccessToken user jwtSettings
+    refreshToken <- liftIO $ generateRefreshTokenWithConfig config
 
-            let accessTokenText = TE.decodeUtf8 $ LBS.toStrict accessToken
+    -- Store tokens
+    liftIO $ atomically $ modifyTVar' oauthStateVar $ \s ->
+        s
+            { authCodes = Map.delete code (authCodes s)
+            , accessTokens = Map.insert accessTokenText user (accessTokens s)
+            , refreshTokens = Map.insert refreshToken (accessTokenText, user) (refreshTokens s)
+            }
 
-            -- Store tokens
-            liftIO $ atomically $ modifyTVar' oauthStateVar $ \s ->
-                s
-                    { authCodes = Map.delete code (authCodes s)
-                    , accessTokens = Map.insert accessTokenText user (accessTokens s)
-                    , refreshTokens = Map.insert refreshToken (accessTokenText, user) (refreshTokens s)
-                    }
-
-            return
-                TokenResponse
-                    { access_token = accessTokenText
-                    , token_type = "Bearer"
-                    , expires_in = Just $ maybe 3600 accessTokenExpirySeconds (httpOAuthConfig config)
-                    , refresh_token = Just refreshToken
-                    , scope = if null (authScopes authCode) then Nothing else Just (T.intercalate " " (authScopes authCode))
-                    }
+    return
+        TokenResponse
+            { access_token = accessTokenText
+            , token_type = "Bearer"
+            , expires_in = Just $ maybe 3600 accessTokenExpirySeconds (httpOAuthConfig config)
+            , refresh_token = Just refreshToken
+            , scope = if null (authScopes authCode) then Nothing else Just (T.intercalate " " (authScopes authCode))
+            }
 
 -- | Handle refresh token grant
 handleRefreshTokenGrant :: JWTSettings -> HTTPServerConfig -> TVar OAuthState -> Map Text Text -> Handler TokenResponse
@@ -706,27 +699,23 @@ handleRefreshTokenGrant jwtSettings config oauthStateVar params = do
         Nothing -> throwError err400{errBody = encode $ object ["error" .= ("invalid_grant" :: Text)]}
 
     -- Generate new JWT access token
-    newAccessTokenResult <- liftIO $ makeJWT user jwtSettings Nothing
-    case newAccessTokenResult of
-        Left _err -> throwError err500{errBody = encode $ object ["error" .= ("Token generation failed" :: Text)]}
-        Right newAccessToken -> do
-            let newAccessTokenText = TE.decodeUtf8 $ LBS.toStrict newAccessToken
+    newAccessTokenText <- generateJWTAccessToken user jwtSettings
 
-            -- Update tokens
-            liftIO $ atomically $ modifyTVar' oauthStateVar $ \s ->
-                s
-                    { accessTokens = Map.insert newAccessTokenText user $ Map.delete oldAccessToken (accessTokens s)
-                    , refreshTokens = Map.insert refreshToken (newAccessTokenText, user) (refreshTokens s)
-                    }
+    -- Update tokens
+    liftIO $ atomically $ modifyTVar' oauthStateVar $ \s ->
+        s
+            { accessTokens = Map.insert newAccessTokenText user $ Map.delete oldAccessToken (accessTokens s)
+            , refreshTokens = Map.insert refreshToken (newAccessTokenText, user) (refreshTokens s)
+            }
 
-            return
-                TokenResponse
-                    { access_token = newAccessTokenText
-                    , token_type = "Bearer"
-                    , expires_in = Just $ maybe 3600 accessTokenExpirySeconds (httpOAuthConfig config)
-                    , refresh_token = Just refreshToken
-                    , scope = Nothing
-                    }
+    return
+        TokenResponse
+            { access_token = newAccessTokenText
+            , token_type = "Bearer"
+            , expires_in = Just $ maybe 3600 accessTokenExpirySeconds (httpOAuthConfig config)
+            , refresh_token = Just refreshToken
+            , scope = Nothing
+            }
 
 -- | Generate random authorization code
 generateAuthCode :: IO Text
@@ -740,6 +729,14 @@ generateAuthCodeWithConfig config = do
     uuid <- UUID.nextRandom
     let prefix = maybe "code_" authCodePrefix (httpOAuthConfig config)
     return $ prefix <> UUID.toText uuid
+
+-- | Generate JWT access token for user
+generateJWTAccessToken :: AuthUser -> JWTSettings -> Handler Text
+generateJWTAccessToken user jwtSettings = do
+    accessTokenResult <- liftIO $ makeJWT user jwtSettings Nothing
+    case accessTokenResult of
+        Left _err -> throwError err500{errBody = encode $ object ["error" .= ("Token generation failed" :: Text)]}
+        Right accessToken -> return $ TE.decodeUtf8 $ LBS.toStrict accessToken
 
 -- | Generate refresh token with configurable prefix
 generateRefreshTokenWithConfig :: HTTPServerConfig -> IO Text
