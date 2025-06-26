@@ -26,12 +26,12 @@ version:            0.3.0.0
 synopsis:           A Haskell implementation of the Model Context Protocol (MCP)
 
 -- A longer description of the package.
-description:        
+description:
     This library provides a complete implementation of the Model Context Protocol (MCP)
     for Haskell. MCP is a protocol that enables seamless communication between AI models
     and external tools, resources, and services. This implementation supports the latest
-    MCP protocol version (2025-06-18) with full compatibility for resources, tools, 
-    prompts, and all standard MCP message types. It provides both a server framework 
+    MCP protocol version (2025-06-18) with full compatibility for resources, tools,
+    prompts, and all standard MCP message types. It provides both a server framework
     and type definitions for building MCP-compliant applications.
     .
     Features dual transport support:
@@ -85,9 +85,9 @@ library
     import:           warnings
 
     -- Modules exported by the library.
-    exposed-modules:  
+    exposed-modules:
         MCP.Types
-        MCP.Protocol  
+        MCP.Protocol
         MCP.Server
         MCP.Server.StdIO
         MCP.Server.HTTP
@@ -100,10 +100,10 @@ library
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    
-        base ^>=4.18.2.1,
+    build-depends:
+        base >=4.18.2.1 && <5,
         aeson >= 2.1 && < 2.3,
-        text >= 2.0 && < 2.1,
+        text >= 2.0 && < 2.2,
         containers >= 0.6 && < 0.7,
         bytestring >= 0.11 && < 0.12,
         unordered-containers >= 0.2 && < 0.3,
@@ -149,10 +149,10 @@ executable mcp
 
     -- Other library packages from which modules are imported.
     build-depends:
-        base ^>=4.18.2.1,
+        base >=4.18.2.1 && <5,
         mcp,
         aeson >= 2.1 && < 2.3,
-        text >= 2.0 && < 2.1,
+        text >= 2.0 && < 2.2,
         containers >= 0.6 && < 0.7,
         scientific >= 0.3 && < 0.4,
         time >= 1.12 && < 1.13
@@ -179,10 +179,10 @@ executable mcp-http
 
     -- Other library packages from which modules are imported.
     build-depends:
-        base ^>=4.18.2.1,
+        base >=4.18.2.1 && <5,
         mcp,
         aeson >= 2.1 && < 2.3,
-        text >= 2.0 && < 2.1,
+        text >= 2.0 && < 2.2,
         containers >= 0.6 && < 0.7,
         scientific >= 0.3 && < 0.4,
         time >= 1.12 && < 1.13,
@@ -219,5 +219,5 @@ test-suite mcp-test
 
     -- Test dependencies.
     build-depends:
-        base ^>=4.18.2.1,
+        base >=4.18.2.1 && <5,
         mcp
