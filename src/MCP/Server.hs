@@ -72,7 +72,7 @@ runMCPServer :: ServerConfig -> ServerState -> MCPServerM a -> IO (Either Text (
 runMCPServer config state action = runExceptT $ runStateT (runReaderT action config) state
 
 {- | Create the initial server state with the given capabilities
-The server starts uninitialized and must receive an 'initialize' request
+The server starts uninitialized and must receive an @initialize@ request
 before it can handle other requests.
 -}
 initialServerState :: ServerCapabilities -> ServerState
