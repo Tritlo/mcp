@@ -904,12 +904,12 @@ data BooleanSchema = BooleanSchema
     deriving stock (Show, Eq, Generic)
 
 instance ToJSON BooleanSchema where
-    toJSON (BooleanSchema _ t d def) =
+    toJSON (BooleanSchema _ t d v0) =
         object $
             ["type" .= ("boolean" :: Text)]
                 ++ maybe [] (\x -> ["title" .= x]) t
                 ++ maybe [] (\x -> ["description" .= x]) d
-                ++ maybe [] (\x -> ["default" .= x]) def
+                ++ maybe [] (\x -> ["default" .= x]) v0
 
 instance FromJSON BooleanSchema where
     parseJSON = withObject "BooleanSchema" $ \o -> do
