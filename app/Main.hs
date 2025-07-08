@@ -1,5 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+  -- hlint is wrong; this is needed to permit this module to create
+  -- values in types that share field names, such as every type
+  -- that has a "_meta" field; is this expected behavior?
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Main where
@@ -16,19 +19,16 @@ import MCP.Types
 
 -- | Minimal MCP Server implementation
 instance MCPServer MCPServerM where
-    handleListResources _params = do
-        return $ ListResourcesResult{resources = [], nextCursor = Nothing, _meta = Nothing}
+    -- handleListResources inherits the default implementation
 
     handleReadResource _params = do
         let textContent = TextResourceContents{uri = "example://hello", text = "Hello from MCP Haskell server!", mimeType = Just "text/plain", _meta = Nothing}
         let content = TextResource textContent
         return $ ReadResourceResult{contents = [content], _meta = Nothing}
 
-    handleListResourceTemplates _params = do
-        return $ ListResourceTemplatesResult{resourceTemplates = [], nextCursor = Nothing, _meta = Nothing}
+    -- handleListResourceTemplates inherits the default implementation
 
-    handleListPrompts _params = do
-        return $ ListPromptsResult{prompts = [], nextCursor = Nothing, _meta = Nothing}
+    -- handleListPrompts inherits the default implementation
 
     handleGetPrompt _params = do
         let textContent = TextContent{text = "Hello prompt!", textType = "text", annotations = Nothing, _meta = Nothing}
@@ -62,9 +62,7 @@ instance MCPServer MCPServerM where
                 let content = TextContentType textContent
                 return $ CallToolResult{content = [content], structuredContent = Nothing, isError = Just True, _meta = Nothing}
 
-    handleComplete _params = do
-        let completionResult = CompletionResult{values = [], total = Nothing, hasMore = Just True}
-        return $ CompleteResult{completion = completionResult, _meta = Nothing}
+    -- handleComplete inherits the default implementation
 
     handleSetLevel _params = do
         liftIO $ putStrLn "Log level set"

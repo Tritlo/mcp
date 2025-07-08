@@ -29,8 +29,7 @@ import Data.Text qualified as T
 import Data.Time (defaultTimeLocale, formatTime, getCurrentTime)
 import Options.Applicative
 
-import MCP.Protocol hiding (CompletionResult)
-import MCP.Protocol qualified as Protocol
+import MCP.Protocol
 import MCP.Server
 import MCP.Server.Auth
 import MCP.Server.HTTP
@@ -79,19 +78,16 @@ opts =
 
 -- | Example MCP Server implementation (copied from Main.hs)
 instance MCPServer MCPServerM where
-    handleListResources _params = do
-        return $ ListResourcesResult{resources = [], nextCursor = Nothing, _meta = Nothing}
+    -- handleListResources inherits the default implementation
 
     handleReadResource _params = do
         let textContent = TextResourceContents{uri = "example://hello", text = "Hello from MCP Haskell HTTP server!", mimeType = Just "text/plain", _meta = Nothing}
         let content = TextResource textContent
         return $ ReadResourceResult{contents = [content], _meta = Nothing}
 
-    handleListResourceTemplates _params = do
-        return $ ListResourceTemplatesResult{resourceTemplates = [], nextCursor = Nothing, _meta = Nothing}
+    -- handleListResourceTemplates inherits the default implementation
 
-    handleListPrompts _params = do
-        return $ ListPromptsResult{prompts = [], nextCursor = Nothing, _meta = Nothing}
+    -- handleListPrompts inherits the default implementation
 
     handleGetPrompt _params = do
         let textContent = TextContent{text = "Hello HTTP prompt!", textType = "text", annotations = Nothing, _meta = Nothing}
@@ -125,9 +121,7 @@ instance MCPServer MCPServerM where
                 let content = TextContentType textContent
                 return $ CallToolResult{content = [content], structuredContent = Nothing, isError = Just True, _meta = Nothing}
 
-    handleComplete _params = do
-        let completionResult = Protocol.CompletionResult{values = [], total = Nothing, hasMore = Just True}
-        return $ CompleteResult{completion = completionResult, _meta = Nothing}
+    -- handleComplete inherits the default implementation
 
     handleSetLevel _params = do
         liftIO $ putStrLn "Log level set via HTTP"

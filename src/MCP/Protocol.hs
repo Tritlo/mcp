@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
@@ -126,6 +127,7 @@ import Control.Applicative ((<|>))
 import Data.Aeson hiding (Object)
 import Data.Aeson.TH
 import Data.Aeson.Types (Object)
+import Data.Default
 import Data.Map (Map)
 import Data.Text (Text)
 import GHC.Generics
@@ -706,6 +708,7 @@ data ListResourcesResult = ListResourcesResult
     , _meta :: Maybe Metadata
     }
     deriving stock (Show, Eq, Generic)
+    deriving anyclass (Default)
 
 $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''ListResourcesResult)
 
@@ -716,6 +719,7 @@ data ListResourceTemplatesResult = ListResourceTemplatesResult
     , _meta :: Maybe Metadata
     }
     deriving stock (Show, Eq, Generic)
+    deriving anyclass (Default)
 
 $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''ListResourceTemplatesResult)
 
@@ -725,6 +729,7 @@ data ReadResourceResult = ReadResourceResult
     , _meta :: Maybe Metadata
     }
     deriving stock (Show, Eq, Generic)
+    deriving anyclass (Default)
 
 $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''ReadResourceResult)
 
@@ -735,6 +740,7 @@ data ListPromptsResult = ListPromptsResult
     , _meta :: Maybe Metadata
     }
     deriving stock (Show, Eq, Generic)
+    deriving anyclass (Default)
 
 $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''ListPromptsResult)
 
@@ -745,6 +751,7 @@ data GetPromptResult = GetPromptResult
     , _meta :: Maybe Metadata
     }
     deriving stock (Show, Eq, Generic)
+    deriving anyclass (Default)
 
 $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''GetPromptResult)
 
@@ -755,6 +762,7 @@ data ListToolsResult = ListToolsResult
     , _meta :: Maybe Metadata
     }
     deriving stock (Show, Eq, Generic)
+    deriving anyclass (Default)
 
 $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''ListToolsResult)
 
@@ -766,6 +774,7 @@ data CallToolResult = CallToolResult
     , _meta :: Maybe Metadata
     }
     deriving stock (Show, Eq, Generic)
+    deriving anyclass (Default)
 
 $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''CallToolResult)
 
@@ -777,6 +786,13 @@ data CompletionResult = CompletionResult
     }
     deriving stock (Show, Eq, Generic)
 
+instance Default CompletionResult where
+    def = CompletionResult{values = [], total = Nothing, hasMore = Just True}
+          -- The "hasMore" field defaults to "Just True", indicating
+          -- that there are always more values to fetch. This is not the
+          -- derived default, so we need to provide the Default instance
+          -- for CompletionResult explicitly.
+
 $(deriveJSON defaultOptions{omitNothingFields = True} ''CompletionResult)
 
 -- | Complete result
@@ -785,6 +801,7 @@ data CompleteResult = CompleteResult
     , _meta :: Maybe Metadata
     }
     deriving stock (Show, Eq, Generic)
+    deriving anyclass (Default)
 
 $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''CompleteResult)
 
@@ -806,6 +823,7 @@ data ListRootsResult = ListRootsResult
     , _meta :: Maybe Metadata
     }
     deriving stock (Show, Eq, Generic)
+    deriving anyclass (Default)
 
 $(deriveJSON defaultOptions{omitNothingFields = True, fieldLabelModifier = \case { "_meta" -> "_meta"; x -> x }} ''ListRootsResult)
 
