@@ -1,62 +1,93 @@
 #!/bin/bash
 
-# Test script for MCP Haskell server
+# Test script for MCP Haskell servers (stdio and http).
 # This script sends basic MCP messages to test server functionality
 
-set -e
+# Suppress job control messages
+set +m
 
-echo "Testing MCP Haskell Server..."
-echo "=============================="
-
-# Build the server first
-echo "Building server..."
-cabal build
-
-echo ""
-echo "Testing server startup..."
+# Build the servers first
+cabal build -v0 lib:mcp mcp-http mcp-stdio
 
 # Create a temporary file for test messages
 TEST_FILE=$(mktemp)
 
 # Write test JSON-RPC messages (each on its own line as required by JSON-RPC)
-cat > "$TEST_FILE" << 'EOF'
-{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"roots": {"listChanged": true}}, "clientInfo": {"name": "test-client", "version": "1.0.0"}}}
+cat > "$TEST_FILE" <<EOF
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"roots": {"listChanged": true}}, "clientInfo": {"name": "TestClient", "title": "Test Client Display Name", "version": "1.0.0"}}}
 {"jsonrpc": "2.0", "id": 2, "method": "ping"}
 {"jsonrpc": "2.0", "id": 3, "method": "resources/list"}
 {"jsonrpc": "2.0", "id": 4, "method": "prompts/list"}
 {"jsonrpc": "2.0", "id": 5, "method": "tools/list"}
 EOF
 
-echo ""
-echo "Sending test messages to server..."
-echo "Input messages:"
-cat "$TEST_FILE"
+NUM_TESTS=$(wc -l $TEST_FILE | awk '{print $1}')
 
-echo ""
-echo "Server responses:"
-echo "=================="
+# Create a temporary file for the server PID
+SERVER_PID_FILE=$(mktemp)
 
-# Run the server with test input and capture output
-OUTPUT=$(timeout 10s cabal run mcp < "$TEST_FILE" 2>&1)
-echo "$OUTPUT"
+function cleanup() {
+    SERVER_PID=$(cat $SERVER_PID_FILE)
+    { kill $SERVER_PID && wait $SERVER_PID; } 2> /dev/null
 
-# Clean up
-rm "$TEST_FILE"
+    # Clean up temporary files
+    rm "$TEST_FILE" 2> /dev/null
+    rm "$SERVER_PID_FILE" 2> /dev/null
 
-echo ""
-echo "Test Analysis:"
-echo "=============="
+    return 0
+}
 
-# Check if we got JSON responses
-if echo "$OUTPUT" | grep -q '"jsonrpc":"2.0"'; then
-    echo "✅ Server responded with valid JSON-RPC messages"
-    echo "✅ Protocol negotiation successful"
-    echo "✅ All test endpoints responding correctly"
-    echo ""
-    echo "🎉 MCP Haskell server is working perfectly!"
-    echo "You can now configure Claude Desktop to use this server."
-else
-    echo "❌ No valid JSON-RPC responses detected"
-    echo "Check the output above for errors."
-    exit 1
-fi
+function test_stdio_server() {
+    local LOG_FILE=$(mktemp)
+
+    cabal run -v0 mcp-stdio -- --log < $TEST_FILE 2>&1 > $LOG_FILE
+    
+    # FAILURES=$(($NUM_TESTS - $(grep -c '"jsonrpc":"2.0"' $LOG) + 1))
+    # +1 to account for the example message the stdio server prints on startup
+    return $(($NUM_TESTS - $(grep -c '"jsonrpc":"2.0"' $LOG_FILE) + 1))
+}
+
+function test_http_server() {
+    local LOG_FILE=$(mktemp)
+
+    cabal run -v0 mcp-http -- --port 8080 --log 2>&1 > /dev/null &
+    sleep 1 # wait for the server to start
+    SERVER_PID=$!
+    echo $SERVER_PID > $SERVER_PID_FILE
+
+    # Test all methods
+    FAILURES=$NUM_TESTS
+    while IFS= read -r message; do
+        curl -s -X POST -H "Content-Type: application/json" -d "$message" http://localhost:8080/mcp 2>&1 > $LOG_FILE
+        if grep -q '"jsonrpc":"2.0"' $LOG_FILE; then
+            FAILURES=$((FAILURES-1))
+        else
+            echo "❌ Unexpected response to $message:"
+            cat $LOG_FILE
+        fi
+    done < "$TEST_FILE"
+
+    return $FAILURES
+}
+
+function run_test() {
+    SERVER_NAME=$1
+    test_${SERVER_NAME}_server
+    RESULT=$?
+    if [ $RESULT -eq 0 ]; then
+        echo "🎉 [$NUM_TESTS/$NUM_TESTS] MCP Haskell $SERVER_NAME server"
+    else
+        echo "❌ [$((NUM_TESTS - RESULT))/$NUM_TESTS] MCP Haskell $SERVER_NAME server"
+        return 1
+    fi
+}
+
+# Run tests
+run_test "http"
+HTTP_RESULT=$?
+run_test "stdio"
+STDIO_RESULT=$?
+
+cleanup
+
+exit $HTTP_RESULT || $STDIO_RESULT

@@ -2,21 +2,21 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-{- |
-Example Stdio MCP Server
+{- | Example Stdio MCP Server
 
 This example demonstrates how to run the MCP server over stdio transport. The
 server will accept messages from stdin, and respond to them on stdout; it
 terminates when it receives an EOF.
 
 To test:
-1. Compile: cabal build mcp-stdio
-2. Run: cabal run mcp-stdio
+1. Compile: `cabal build mcp-stdio`
+2. Run: `cabal run mcp-stdio`
 3. Echo JSON-RPC messages to the server's stdin:
 > echo '{"jsonrpc":"2.0","id":1,"method":"ping"}' | cabal run mcp-stdio -- --log
-
-Command line options:
-> cabal run mcp-stdio -- --log
+4. Send messages from a file (one per line) to the server:
+> cat $MESSAGE_FILE | cabal run mcp-stdio -- --log
+5. Send a message to the server using the tool `getCurrentDate`:
+> echo '{"jsonrpc":"2.0","id":1,"method":"callTool","params":{"name":"getCurrentDate"}}' | cabal run mcp-stdio -- --log
 
 -}
 module Main where

@@ -385,9 +385,31 @@ For Claude Desktop, add to your config file (location varies by OS):
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 - **Linux**: `~/.config/claude/claude_desktop_config.json`
 
-**Cursor**
+**Cursor:**
 
-In Cursor's menu, navigate to the "Tools and Integrations" section of Cursor's settings. The "MCP Tools" subsection has a "New MCP Server" button. Add your config, syntax as above.
+In Cursor's menu, navigate to the "Tools and Integrations" section of Cursor's settings. The "MCP Tools" subsection has a "New MCP Server" button. Add your config, with a few more args than for Clude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "haskell-stdio-mcp": {
+      "command": "cabal",
+      "args": ["run", "--project-dir", "/absolute/path/to/mcp-haskell", "-v0", "mcp-stdio", "--", "--log"],
+      "cwd": "/absolute/path/to/mcp-haskell",
+      "env": {
+        "GHC_ENVIRONMENT": "-"
+      }
+    }
+  }
+}
+```
+
+Note that we have to specify the cabal project directory, despite it being the same as the `cwd`; at least, we couldn't get Cursor to `cabal run` the stdio server otherwise.
+
+If this works you should see the tools for your MCP server listed under the "MCP Tools" subsection, as pictured below:
+![Screenshot of the MCP Tools subsection of the Cursor Settings page, showing tools listed for two example Haskell MCP Servers](.assets/cursor-mcp-tools-configured.jpeg)
+
+At the time of writing, Cursor supports text-based MCP servers only, but http-based server support is anticipated.
 
 ----
 See the [`examples/`](examples/) directory for more detailed configuration examples and setup instructions.
