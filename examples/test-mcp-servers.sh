@@ -4,7 +4,7 @@
 # This script sends basic MCP messages to test server functionality
 
 # Suppress job control messages
-set +m
+# set +m
 
 # Build the servers first
 cabal build -v0 lib:mcp mcp-http mcp-stdio
@@ -51,9 +51,9 @@ function test_http_server() {
     local LOG_FILE=$(mktemp)
 
     cabal run -v0 mcp-http -- --port 8080 --log 2>&1 > /dev/null &
-    sleep 1 # wait for the server to start
     SERVER_PID=$!
     echo $SERVER_PID > $SERVER_PID_FILE
+    sleep 1 # wait for the server to start
 
     # Test all methods
     FAILURES=$NUM_TESTS
@@ -63,7 +63,9 @@ function test_http_server() {
             FAILURES=$((FAILURES-1))
         else
             echo "❌ Unexpected response to $message:"
+            echo "----"
             cat $LOG_FILE
+            echo "----"
         fi
     done < "$TEST_FILE"
 
