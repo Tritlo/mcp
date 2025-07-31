@@ -36,6 +36,7 @@ import Control.Monad.Reader (ReaderT, runReaderT)
 import Control.Monad.State.Strict (StateT, runStateT)
 import Data.Aeson (ToJSON, encode, toJSON)
 import Data.ByteString.Lazy.Char8 qualified as LBSC
+import Data.Default
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
@@ -71,7 +72,7 @@ runMCPServer :: ServerConfig -> ServerState -> MCPServerM a -> IO (Either Text (
 runMCPServer config state action = runExceptT $ runStateT (runReaderT action config) state
 
 {- | Create the initial server state with the given capabilities
-The server starts uninitialized and must receive an 'initialize' request
+The server starts uninitialized and must receive an @initialize@ request
 before it can handle other requests.
 -}
 initialServerState :: ServerCapabilities -> ServerState
@@ -95,6 +96,17 @@ class (Monad m) => MCPServer m where
     handleCallTool :: CallToolParams -> m CallToolResult
     handleComplete :: CompleteParams -> m CompleteResult
     handleSetLevel :: SetLevelParams -> m ()
+
+    -- | Default, trivial implementations for all handlers
+    handleListResources _ = return def
+    handleReadResource _ = return def
+    handleListResourceTemplates _ = return def
+    handleListPrompts _ = return def
+    handleGetPrompt _ = return def
+    handleListTools _ = return def
+    handleCallTool _ = return def
+    handleComplete _ = return def
+    handleSetLevel _ = return ()
 
 -- | Send a JSON-RPC response
 sendResponse :: (MonadIO m, ToJSON a) => Handle -> RequestId -> a -> m ()

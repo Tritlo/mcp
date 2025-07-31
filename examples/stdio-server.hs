@@ -1,15 +1,32 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-  -- hlint is wrong; this is needed to permit this module to create
-  -- values in types that share field names, such as every type
-  -- that has a "_meta" field; is this expected behavior?
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+{- | Example Stdio MCP Server
+
+This example demonstrates how to run the MCP server over stdio transport. The
+server will accept messages from stdin, and respond to them on stdout; it
+terminates when it receives an EOF.
+
+To test:
+1. Compile: `cabal build mcp-stdio`
+2. Run: `cabal run mcp-stdio`
+3. Echo JSON-RPC messages to the server's stdin:
+> echo '{"jsonrpc":"2.0","id":1,"method":"ping"}' | cabal run mcp-stdio -- --log
+4. Send messages from a file (one per line) to the server:
+> cat $MESSAGE_FILE | cabal run mcp-stdio -- --log
+5. Send a message to the server using the tool `getCurrentDate`:
+> echo '{"jsonrpc":"2.0","id":1,"method":"callTool","params":{"name":"getCurrentDate"}}' | cabal run mcp-stdio -- --log
+
+-}
 module Main where
 
+import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Text qualified as T
 import Data.Time (defaultTimeLocale, formatTime, getCurrentTime)
+import Options.Applicative
+
 import System.IO (stdin, stdout)
 
 import MCP.Protocol
@@ -17,12 +34,44 @@ import MCP.Server
 import MCP.Server.StdIO
 import MCP.Types
 
--- | Minimal MCP Server implementation
+-- | Command line options
+newtype Options = Options
+    { optEnableLogging :: Bool
+    }
+    deriving (Show)
+
+-- | Parser for command line options
+optionsParser :: Parser Options
+optionsParser =
+    Options
+        <$> switch
+            ( long "log"
+                <> short 'l'
+                <> help "Enable request/response logging"
+            )
+
+-- | Full parser with help
+opts :: ParserInfo Options
+opts =
+    info
+        (optionsParser <**> helper)
+        ( fullDesc
+            <> progDesc "Run an MCP server over stdio transport"
+            <> header "mcp-stdio - Stdio MCP Server Example"
+        )
+
+-- | Example MCP Server implementation (copied from Main.hs)
 instance MCPServer MCPServerM where
     -- handleListResources inherits the default implementation
 
     handleReadResource _params = do
-        let textContent = TextResourceContents{uri = "example://hello", text = "Hello from MCP Haskell server!", mimeType = Just "text/plain", _meta = Nothing}
+        let textContent =
+                TextResourceContents
+                    { uri = "example://mcp/stdio/hello"
+                    , text = "Hello from MCP Haskell Stdio server!"
+                    , mimeType = Just "text/plain"
+                    , _meta = Nothing
+                    }
         let content = TextResource textContent
         return $ ReadResourceResult{contents = [content], _meta = Nothing}
 
@@ -31,7 +80,7 @@ instance MCPServer MCPServerM where
     -- handleListPrompts inherits the default implementation
 
     handleGetPrompt _params = do
-        let textContent = TextContent{text = "Hello prompt!", textType = "text", annotations = Nothing, _meta = Nothing}
+        let textContent = TextContent{text = "Hello Stdio prompt!", textType = "text", annotations = Nothing, _meta = Nothing}
         let content = TextContentType textContent
         let message = PromptMessage{role = User, content = content}
         return $ GetPromptResult{messages = [message], description = Nothing, _meta = Nothing}
@@ -41,7 +90,7 @@ instance MCPServer MCPServerM where
                 Tool
                     { name = "getCurrentDate"
                     , title = Nothing
-                    , description = Just "Get the current date and time"
+                    , description = Just "Get the current date and time via Stdio"
                     , inputSchema = InputSchema "object" Nothing Nothing
                     , outputSchema = Nothing
                     , annotations = Nothing
@@ -53,7 +102,7 @@ instance MCPServer MCPServerM where
         case toolName of
             "getCurrentDate" -> do
                 currentTime <- liftIO getCurrentTime
-                let dateStr = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S UTC" currentTime
+                let dateStr = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S UTC (via Stdio)" currentTime
                 let textContent = TextContent{text = T.pack dateStr, textType = "text", annotations = Nothing, _meta = Nothing}
                 let content = TextContentType textContent
                 return $ CallToolResult{content = [content], structuredContent = Nothing, isError = Nothing, _meta = Nothing}
@@ -64,16 +113,19 @@ instance MCPServer MCPServerM where
 
     -- handleComplete inherits the default implementation
 
-    handleSetLevel _params = do
-        liftIO $ putStrLn "Log level set"
+    -- handleSetLevel inherits the default implementation
+
 
 main :: IO ()
 main = do
-    putStrLn "Starting MCP Haskell Server..."
+    Options{..} <- execParser opts
+
+    putStrLn "Starting MCP Haskell Stdio Server..."
+    when optEnableLogging $ putStrLn "Request/Response logging: enabled"
 
     let serverInfo =
             Implementation
-                { name = "mcp-haskell-example"
+                { name = "mcp-haskell-stdio-example"
                 , title = Nothing
                 , version = "0.1.0"
                 }
@@ -103,12 +155,17 @@ main = do
                 }
 
     let config =
-            MCP.Server.StdIO.ServerConfig
+            ServerConfig
                 { configInput = stdin
                 , configOutput = stdout
                 , configServerInfo = serverInfo
                 , configCapabilities = capabilities
                 }
 
-    putStrLn "Server configured, starting message loop..."
-    MCP.Server.StdIO.runServer config
+    putStrLn "Stdio server configured, starting..."
+
+    putStrLn ""
+    putStrLn "Example test input:"
+    putStrLn "'{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}'"
+
+    runServer config

@@ -1,6 +1,5 @@
 ![image](https://github.com/user-attachments/assets/69dc29d5-5228-467c-8288-16c18192f986)
 
-
 # MCP-Haskell
 
 A complete implementation of the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) for Haskell.
@@ -27,27 +26,32 @@ This project provides a type-safe, comprehensive implementation of the Model Con
 The implementation is organized into five main modules:
 
 ### `MCP.Types`
+
 - Core MCP data types (Content, Resource, Tool, Prompt, etc.)
 - Automatic JSON serialization/deserialization via Aeson
 - Type-safe mapping of the complete MCP schema
 
 ### `MCP.Protocol`
+
 - JSON-RPC message wrappers
 - All client and server request/response types
 - Notification types for bidirectional communication
 - Union types for organizing related messages
 
 ### `MCP.Server`
+
 - Core server infrastructure with `MCPServerM` monad stack
 - `MCPServer` typeclass for implementing custom servers
 - Shared types and utilities for both transport methods
 
 ### `MCP.Server.StdIO`
+
 - StdIO transport implementation
 - JSON-RPC communication over stdin/stdout
 - Suitable for process-based MCP clients
 
 ### `MCP.Server.HTTP`
+
 - HTTP transport implementation following MCP specification
 - RESTful JSON-RPC API at `/mcp` endpoint
 - Built with Servant and Warp for production use
@@ -64,6 +68,7 @@ cabal build
 ### Running the Example Server
 
 **StdIO Mode (default):**
+
 ```bash
 cabal run mcp
 ```
@@ -104,12 +109,14 @@ main = do
 ```
 
 Then compile and run:
+
 ```bash
 cabal build mcp-http
 cabal run mcp-http
 ```
 
 Or compile directly:
+
 ```bash
 ghc -o mcp-http MyHTTPServer.hs
 ./mcp-http
@@ -122,12 +129,14 @@ The HTTP server will start on port 8080 with the MCP endpoint available at `POST
 The HTTP transport supports MCP-compliant OAuth 2.1 authentication with mandatory PKCE:
 
 **MCP OAuth Requirements:**
+
 - **PKCE Required**: All OAuth flows MUST use PKCE (Proof Key for Code Exchange)
 - **HTTPS Required**: OAuth endpoints must use HTTPS in production
 - **Grant Types**: Supports Authorization Code (user flows) and Client Credentials (app-to-app)
 - **Token Format**: Bearer tokens in Authorization header only (never in query strings)
 
 **OAuth Endpoints:**
+
 - **Metadata Discovery**: `/.well-known/oauth-authorization-server` - Returns OAuth server metadata
 - **Dynamic Registration**: `/register` - Allows clients to register dynamically
 - **Authorization**: `/authorize` - Initiates authorization flow with PKCE
@@ -138,11 +147,13 @@ The HTTP transport supports MCP-compliant OAuth 2.1 authentication with mandator
 **Complete OAuth Flow:**
 
 1. **Discovery**: Client discovers OAuth metadata
+
    ```bash
    curl http://localhost:8080/.well-known/oauth-authorization-server
    ```
 
 2. **Registration**: Client registers dynamically
+
    ```bash
    curl -X POST http://localhost:8080/register \
      -H "Content-Type: application/json" \
@@ -156,7 +167,8 @@ The HTTP transport supports MCP-compliant OAuth 2.1 authentication with mandator
    ```
 
 3. **Authorization**: User authorizes with PKCE
-   ```
+
+   ```text
    http://localhost:8080/authorize?
      response_type=code&
      client_id=CLIENT_ID&
@@ -167,6 +179,7 @@ The HTTP transport supports MCP-compliant OAuth 2.1 authentication with mandator
    ```
 
 4. **Token Exchange**: Exchange code for token
+
    ```bash
    curl -X POST http://localhost:8080/token \
      -H "Content-Type: application/x-www-form-urlencoded" \
@@ -174,6 +187,7 @@ The HTTP transport supports MCP-compliant OAuth 2.1 authentication with mandator
    ```
 
 5. **API Access**: Use token for authenticated requests
+
    ```bash
    curl -X POST http://localhost:8080/mcp \
      -H "Authorization: Bearer ACCESS_TOKEN" \
@@ -182,6 +196,7 @@ The HTTP transport supports MCP-compliant OAuth 2.1 authentication with mandator
    ```
 
 **Error Responses (MCP-compliant):**
+
 - `401 Unauthorized`: Invalid or expired token
 - `403 Forbidden`: Insufficient permissions
 - `400 Bad Request`: Malformed request
@@ -289,7 +304,7 @@ This implementation provides complete support for MCP protocol version **2025-06
 
 ## Project Structure
 
-```
+```text
 src/
 ├── MCP/
 │   ├── Types.hs          # Core MCP data types
@@ -311,6 +326,7 @@ test/
 ### Dependencies
 
 **Core Dependencies:**
+
 - **aeson**: JSON serialization/deserialization
 - **text**: Text processing
 - **containers**: Map and other container types
@@ -318,6 +334,7 @@ test/
 - **mtl/transformers**: Monad transformers for MCPServerM
 
 **HTTP Server Dependencies:**
+
 - **warp**: High-performance HTTP server
 - **servant-server**: Type-safe web API framework  
 - **wai**: Web application interface
@@ -346,6 +363,8 @@ test/
 
 ### Example MCP Client Configuration
 
+**Claude Desktop:**
+
 For Claude Desktop, add to your config file (location varies by OS):
 
 ```json
@@ -360,11 +379,39 @@ For Claude Desktop, add to your config file (location varies by OS):
 }
 ```
 
-**Configuration file locations:**
+*Configuration file locations:*
+
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json` 
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 - **Linux**: `~/.config/claude/claude_desktop_config.json`
 
+**Cursor:**
+
+In Cursor's menu, navigate to the "Tools and Integrations" section of Cursor's settings. The "MCP Tools" subsection has a "New MCP Server" button. Add your config, with a few more args than for Clude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "haskell-stdio-mcp": {
+      "command": "cabal",
+      "args": ["run", "--project-dir", "/absolute/path/to/mcp-haskell", "-v0", "mcp-stdio", "--", "--log"],
+      "cwd": "/absolute/path/to/mcp-haskell",
+      "env": {
+        "GHC_ENVIRONMENT": "-"
+      }
+    }
+  }
+}
+```
+
+Note that we have to specify the cabal project directory, despite it being the same as the `cwd`; at least, we couldn't get Cursor to `cabal run` the stdio server otherwise.
+
+If this works you should see the tools for your MCP server listed under the "MCP Tools" subsection, as pictured below:
+![Screenshot of the MCP Tools subsection of the Cursor Settings page, showing tools listed for two example Haskell MCP Servers](.assets/cursor-mcp-tools-configured.jpeg)
+
+At the time of writing, Cursor supports text-based MCP servers only, but http-based server support is anticipated.
+
+----
 See the [`examples/`](examples/) directory for more detailed configuration examples and setup instructions.
 
 ## Implementation Notes
@@ -412,6 +459,7 @@ The server includes comprehensive error handling:
 This is the first known implementation of MCP for Haskell, now fully compliant with the latest MCP protocol version 2025-06-18. Contributions are welcome!
 
 Areas for improvement:
+
 - Server-Sent Events (SSE) support for HTTP transport
 - WebSocket transport implementation
 - More comprehensive example servers demonstrating new features (elicitation, resource links, etc.)
