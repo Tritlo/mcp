@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-  -- hlint is wrong; this is needed to permit this module to create
+{-# LANGUAGE DisambiguateRecordFields #-}
+  -- This pragma is needed to permit this module to create
   -- values in types that share field names, such as every type
-  -- that has a "_meta" field; is this expected behavior?
+  -- that has a "_meta" field
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Main where
