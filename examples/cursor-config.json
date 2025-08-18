@@ -2,21 +2,21 @@
   "mcpServers": {
     "haskell-mcp-development": {
       "command": "cabal",
-      "args": ["run", "mcp"],
+      "args": ["run", "--project-dir", "/Users/username/projects/mcp-haskell", "-v0", "mcp-stdio", "--", "--log"],
       "cwd": "/Users/username/projects/mcp-haskell",
       "env": {
         "GHC_ENVIRONMENT": "-"
       }
     },
     "haskell-mcp-production": {
-      "command": "/usr/local/bin/mcp-haskell",
+      "command": "/usr/local/bin/mcp-stdio",
       "args": [],
       "cwd": "/opt/mcp-servers",
       "env": {}
     },
     "haskell-mcp-stack": {
       "command": "stack",
-      "args": ["exec", "mcp"],
+      "args": ["exec", "--cwd", "/Users/username/projects/mcp-haskell", "--package", "mcp", "mcp-stdio"],
       "cwd": "/Users/username/projects/mcp-haskell",
       "env": {}
     }
