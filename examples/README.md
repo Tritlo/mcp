@@ -141,6 +141,7 @@ Demonstrates how to run an MCP server using HTTP transport instead of StdIO.
 ### Building and Running
 
 **Using Cabal (recommended):**
+
 ```bash
 # From the project root
 cabal build mcp-http
@@ -148,6 +149,7 @@ cabal run mcp-http
 ```
 
 **Manual compilation:**
+
 ```bash
 # From the project root
 ghc -package-env=. -o examples/http-server examples/http-server.hs
@@ -156,6 +158,7 @@ cd examples
 ```
 
 **Using cabal exec:**
+
 ```bash
 cabal exec ghc -- -package-env=. -o examples/http-server examples/http-server.hs
 cd examples  
