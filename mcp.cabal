@@ -70,7 +70,9 @@ extra-source-files:
     examples/http-server.hs
     examples/stdio-server.hs
     examples/claude-desktop-config.json
-    examples/full-config-example.json
+    examples/claude-desktop-full-config.json
+    examples/cursor-config-examples.json
+    examples/test-mcp-servers.sh
 
 homepage:       https://github.com/Tritlo/mcp
 
